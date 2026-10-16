@@ -5,7 +5,7 @@ import type { LyricLine, VocabItem } from "@/lib/types";
 import { Ruby } from "./Ruby";
 
 /**
- * 가사 한 줄을 후리가나와 함께 그린다. 단어장에 있는 단어는 밑줄로 표시하고 누를 수 있다.
+ * 가사 한 줄을 후리가나와 함께 그린다. 단어장에 있는 단어는 형광펜으로 칠하고 누를 수 있다.
  * focusId를 주면 그 단어만 강조하고 읽기를 가린다(복습 카드 앞면).
  */
 export function LyricLineView({
@@ -42,19 +42,16 @@ export function LyricLineView({
         ));
         if (!group.id) return <span key={gi}>{content}</span>;
         if (focusId !== undefined) {
-          return (
-            <mark key={gi} className={group.id === focusId ? "rounded bg-mark px-0.5 font-bold text-ink" : "bg-transparent text-inherit"}>
+          return group.id === focusId ? (
+            <mark key={gi} className="focus-word">
               {content}
             </mark>
+          ) : (
+            <span key={gi}>{content}</span>
           );
         }
         return (
-          <button
-            key={gi}
-            type="button"
-            onClick={() => onWord?.(group.id!)}
-            className="rounded underline decoration-accent/60 decoration-2 underline-offset-[6px] hover:bg-accent-soft"
-          >
+          <button key={gi} type="button" onClick={() => onWord?.(group.id!)} className="vocab-word font-semibold">
             {content}
           </button>
         );

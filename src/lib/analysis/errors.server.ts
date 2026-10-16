@@ -14,7 +14,11 @@ export function errorResponse(err: unknown): Response {
   }
   if (err instanceof AnalysisError) return json(422, "ANALYSIS_FAILED", err.message);
   if (err instanceof Anthropic.AuthenticationError) {
-    return json(503, "BAD_API_KEY", "서버의 ANTHROPIC_API_KEY가 올바르지 않아요.");
+    return json(
+      503,
+      "BAD_API_KEY",
+      "서버에 넣은 Claude API 키가 거절됐어요. Vercel 환경 변수의 ANTHROPIC_API_KEY를 확인하고 다시 배포해 주세요.",
+    );
   }
   if (err instanceof Anthropic.RateLimitError) {
     return json(429, "RATE_LIMITED", "요청이 많아서 잠시 막혔어요. 조금 뒤에 다시 시도해 주세요.");

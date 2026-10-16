@@ -54,16 +54,26 @@ function setInFlight(id: string, on: boolean) {
   });
 }
 
-/** AI 단어장 생성을 시작한다. 화면을 옮겨도 계속 진행되고 결과는 저장소에 기록된다. */
-export async function startAnalysis(songId: string): Promise<void> {
+/**
+ * AI 단어장 생성을 시작한다. 화면을 옮겨도 계속 진행되고 결과는 저장소에 기록된다.
+ * retokenize: 예전에 저장한 가사를 다시 정리한다(후리가나가 섞여 들어간 가사 등).
+ */
+export async function startAnalysis(songId: string, opts: { retokenize?: boolean } = {}): Promise<void> {
   if (useInFlight.getState().ids.has(songId)) return;
   const { songs, updateSong } = useStore.getState();
-  const song = songs[songId];
+  let song = songs[songId];
   if (!song) return;
 
   setInFlight(songId, true);
   updateSong(songId, { status: "analyzing", error: undefined });
   try {
+    if (opts.retokenize) {
+      const lines = await tokenize(song.lines.map((l) => l.text));
+      if (lines.some((l, i) => l.text !== song.lines[i]?.text)) {
+        updateSong(songId, { lines });
+        song = { ...song, lines };
+      }
+    }
     const data = await postJson<AnalyzeResponse>("/api/analyze", {
       title: song.title,
       artist: song.artist,

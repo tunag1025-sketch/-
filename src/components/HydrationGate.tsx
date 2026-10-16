@@ -7,10 +7,10 @@ export function HydrationGate({ children }: { children: React.ReactNode }) {
   const hydrated = useHydrated((s) => s.hydrated);
   if (!hydrated) {
     return (
-      <div className="space-y-3 pt-6" aria-busy>
-        <div className="h-8 w-40 animate-pulse rounded-xl bg-surface-2" />
-        <div className="h-24 animate-pulse rounded-3xl bg-surface-2" />
-        <div className="h-24 animate-pulse rounded-3xl bg-surface-2" />
+      <div className="space-y-4 pt-8" aria-busy>
+        <div className="h-9 w-44 animate-pulse rounded-2xl bg-white/50" />
+        <div className="h-28 animate-pulse rounded-3xl bg-white/50" />
+        <div className="h-20 animate-pulse rounded-3xl bg-white/50" />
       </div>
     );
   }

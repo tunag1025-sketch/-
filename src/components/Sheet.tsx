@@ -30,15 +30,24 @@ export function Sheet({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal>
-      <button aria-label="닫기" className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="pb-safe relative max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-surface shadow-xl sm:rounded-3xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-5 pt-4 pb-2">
-          <span className="text-sm font-medium text-ink-3">{title}</span>
-          <button onClick={onClose} className="-mr-2 rounded-full p-2 text-ink-3 hover:bg-surface-2" aria-label="닫기">
-            <Icon name="close" />
-          </button>
+      <button aria-label="닫기" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="pb-safe relative max-h-[86dvh] w-full max-w-xl overflow-y-auto rounded-t-[28px] border-2 border-b-0 border-edge bg-surface sm:rounded-[28px] sm:border-b-2">
+        <div className="sticky top-0 z-10 bg-surface px-5 pt-2.5 pb-2">
+          <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-ink-3/40" />
+          <div className="flex items-center justify-between">
+            <span className="truncate font-mono text-[11px] font-bold tracking-wider text-pink-text">
+              ♪ {title}
+            </span>
+            <button
+              onClick={onClose}
+              className="-mr-1.5 grid size-9 place-items-center rounded-full border-2 border-edge"
+              aria-label="닫기"
+            >
+              <Icon name="close" className="size-4" />
+            </button>
+          </div>
         </div>
-        <div className="px-5 pb-6">{children}</div>
+        <div className="px-5 pt-2 pb-7">{children}</div>
       </div>
     </div>
   );

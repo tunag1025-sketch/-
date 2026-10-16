@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
+import { BackButton } from "@/components/PageHeader";
+import { Cassette, Sparkle } from "@/components/Stickers";
 import { Icon } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
@@ -13,10 +15,10 @@ import { useStore } from "@/lib/store";
 import type { Grade } from "@/lib/types";
 
 const GRADES: { grade: Grade; label: string; className: string }[] = [
-  { grade: "again", label: "다시", className: "bg-accent-soft text-accent" },
-  { grade: "hard", label: "어려움", className: "bg-hard-soft text-hard" },
-  { grade: "good", label: "알맞음", className: "bg-good-soft text-good" },
-  { grade: "easy", label: "쉬움", className: "bg-surface-2 text-ink-2" },
+  { grade: "again", label: "다시", className: "bg-candy" },
+  { grade: "hard", label: "어려움", className: "bg-lav" },
+  { grade: "good", label: "알맞음", className: "bg-lemon" },
+  { grade: "easy", label: "쉬움", className: "bg-sky" },
 ];
 
 export function ReviewClient() {
@@ -68,22 +70,22 @@ function ReviewSession({ songId }: { songId?: string }) {
 
   return (
     <div className="pt-4">
-      <header className="mb-4 flex items-center justify-between text-sm text-ink-3">
-        <Link href={songId ? `/songs/${songId}` : "/"} className="-ml-2 rounded-full p-2 hover:bg-surface-2" aria-label="나가기">
-          <Icon name="close" />
-        </Link>
-        <span>
-          {pos + 1} / {queue.length}
+      <header className="flex items-center gap-3">
+        <BackButton href={songId ? `/songs/${songId}` : "/"} label="나가기" icon="close" />
+        <div className="h-4 flex-1 overflow-hidden rounded-full border-2 border-edge bg-surface">
+          <div className="h-full rounded-full bg-pink transition-all" style={{ width: `${(pos / queue.length) * 100}%` }} />
+        </div>
+        <span className="font-pixel text-[15px]">
+          {pos + 1}/{queue.length}
         </span>
       </header>
-      <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-surface-2">
-        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(pos / queue.length) * 100}%` }} />
-      </div>
 
-      <article className="rounded-3xl border border-line bg-surface px-5 py-6">
-        <p className="font-jp mb-4 text-xs font-semibold text-accent">♪ {song.title}</p>
+      <article className="sticker relative mt-6 overflow-hidden px-5 pt-5 pb-7">
+        <p className="truncate pr-8 font-mono text-[11px] font-bold tracking-wider text-pink-text">
+          ♪ {song.title}
+        </p>
         {contextLine !== undefined && song.lines[contextLine] && (
-          <p className="mb-6 text-[18px] leading-[2.3]">
+          <p className="mt-3 rounded-2xl bg-surface-2 px-3.5 py-2 text-[17px] leading-[2.3]">
             <LyricLineView
               line={song.lines[contextLine]}
               index={contextLine}
@@ -93,22 +95,20 @@ function ReviewSession({ songId }: { songId?: string }) {
             />
           </p>
         )}
-        <div className="text-center">
-          {revealed ? (
-            <WordHeading item={item} />
-          ) : (
-            <div className="font-jp text-4xl font-bold">{item.word}</div>
-          )}
+        <div className="mt-6 text-center">
+          {revealed ? <WordHeading item={item} /> : <div className="font-jp text-[42px] leading-tight font-extrabold">{item.word}</div>}
+          {!revealed && <p className="font-mono mt-2 text-[11px] text-ink-3">[ 읽기와 뜻을 떠올려 보세요 ]</p>}
         </div>
+        <Sparkle className="absolute top-3 right-4 w-6" />
       </article>
 
       {revealed && (
-        <div className="mt-4 rounded-3xl border border-line bg-surface px-5 py-5">
+        <div className="sticker mt-4 px-5 py-5">
           <VocabDetail item={item} showHeading={false} />
         </div>
       )}
 
-      <div className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur">
+      <div className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t-2 border-edge bg-surface/90 backdrop-blur-md">
         <div className="mx-auto max-w-xl px-4 py-3">
           {revealed ? (
             <div className="grid grid-cols-4 gap-2">
@@ -117,10 +117,10 @@ function ReviewSession({ songId }: { songId?: string }) {
                   key={g.grade}
                   type="button"
                   onClick={() => answer(g.grade)}
-                  className={`rounded-2xl px-1 py-3 text-center ${g.className}`}
+                  className={`sticker-sm press rounded-2xl px-1 py-2.5 text-center text-black ${g.className}`}
                 >
-                  <div className="text-[15px] font-bold">{g.label}</div>
-                  <div className="text-[11px] opacity-80">{intervalLabel(card, g.grade, now)}</div>
+                  <div className="text-[15px] font-extrabold">{g.label}</div>
+                  <div className="font-pixel text-[12px] opacity-75">{intervalLabel(card, g.grade, now)}</div>
                 </button>
               ))}
             </div>
@@ -128,7 +128,7 @@ function ReviewSession({ songId }: { songId?: string }) {
             <button
               type="button"
               onClick={() => setRevealed(true)}
-              className="w-full rounded-2xl bg-ink px-4 py-4 text-base font-bold text-bg"
+              className="sticker-sm press w-full rounded-full bg-black px-4 py-4 text-base font-bold text-white"
             >
               뜻 보기
             </button>
@@ -141,16 +141,20 @@ function ReviewSession({ songId }: { songId?: string }) {
 
 function Finished({ total, songTitle, empty }: { total: number; songTitle?: string; empty: boolean }) {
   return (
-    <div className="pt-24 text-center">
-      <div className="text-5xl">{empty ? "🎵" : "🎉"}</div>
-      <h1 className="mt-4 text-xl font-bold">{empty ? "지금 복습할 단어가 없어요" : "오늘 복습 끝!"}</h1>
-      <p className="mt-1 text-sm text-ink-3">
+    <div className="relative pt-16 text-center">
+      <Cassette className="bob mx-auto w-36" style={{ "--tilt": "-6deg" } as React.CSSProperties} />
+      <p className="pixel-pop mt-6 text-[34px] leading-none">{empty ? "NO CARDS" : "ALL CLEAR!"}</p>
+      <h1 className="mt-3 text-lg font-extrabold">{empty ? "지금 복습할 단어가 없어요" : "오늘 복습 끝!"}</h1>
+      <p className="mt-1 text-sm text-ink-2">
         {empty
           ? "노래를 추가하거나, 다음 복습 시간이 되면 여기에 카드가 생겨요."
           : `${songTitle ? `'${songTitle}' ` : ""}단어 ${total}개를 복습했어요.`}
       </p>
-      <Link href="/" className="mt-6 inline-block rounded-full bg-accent px-6 py-3 font-semibold text-accent-ink">
-        홈으로
+      <Link
+        href="/"
+        className="sticker-sm press mt-7 inline-flex items-center gap-1.5 rounded-full bg-pink px-6 py-3 font-bold text-black"
+      >
+        홈으로 <Icon name="arrow" className="size-4" />
       </Link>
     </div>
   );

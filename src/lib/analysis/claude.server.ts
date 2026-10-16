@@ -16,8 +16,10 @@ export class AnalysisError extends Error {}
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY) throw new MissingApiKeyError("ANTHROPIC_API_KEY가 설정되지 않았어요.");
-  client ??= new Anthropic();
+  // 붙여넣을 때 딸려 온 공백·줄바꿈 때문에 인증이 실패하지 않게 다듬는다.
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim().replace(/^["']|["']$/g, "");
+  if (!apiKey) throw new MissingApiKeyError("ANTHROPIC_API_KEY가 설정되지 않았어요.");
+  client ??= new Anthropic({ apiKey });
   return client;
 }
 

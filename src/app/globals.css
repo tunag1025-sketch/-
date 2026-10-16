@@ -1,40 +1,54 @@
 @import "tailwindcss";
 
+/* 파스텔 Y2K 무드: 핑크→하늘 그라데이션, 핫핑크 포인트, 베이비블루·레몬·라벤더 블록, 스티커 테두리 */
 :root {
-  --bg: #faf6f1;
+  --bg-top: #ffd3ee;
+  --bg-mid: #f3eaff;
+  --bg-bottom: #dcf3ff;
+  --bg: #f6efff;
   --surface: #ffffff;
-  --surface-2: #f3ede6;
-  --ink: #221d18;
-  --ink-2: #5e554c;
-  --ink-3: #958a7e;
-  --line: #e8e0d6;
-  --accent: #e2495a;
-  --accent-ink: #ffffff;
-  --accent-soft: #fde6e8;
-  --mark: #fff1c2;
-  --good: #2f8f5b;
-  --good-soft: #e1f2e8;
-  --hard: #c27a12;
-  --hard-soft: #f8ecd8;
+  --surface-2: #f5f0fb;
+  --ink: #17121f;
+  --ink-2: #4b4459;
+  --ink-3: #958da6;
+  --edge: #17121f;
+  --shadow: #6fd0ff;
+  --line: #e6e0ef;
+  --pink: #ff4fb8;
+  --pink-text: #d4108a;
+  --pink-soft: #ffd1ec;
+  --sky: #9ee0ff;
+  --peri: #8fa9ff;
+  --lav: #cdbbff;
+  --lemon: #eeff8a;
+  --mark-bg: #f0ff70;
+  --mark-ink: inherit;
+  --bg-dot: rgb(255 255 255 / 0.55);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #15120f;
-    --surface: #1f1b17;
-    --surface-2: #2a251f;
-    --ink: #f3ece4;
-    --ink-2: #c3b8ab;
-    --ink-3: #8a7f73;
-    --line: #342e27;
-    --accent: #ff6b7a;
-    --accent-ink: #1b0b0d;
-    --accent-soft: #3a1d21;
-    --mark: #4a3d12;
-    --good: #5cc28a;
-    --good-soft: #1c3326;
-    --hard: #e3a440;
-    --hard-soft: #3a2d17;
+    --bg-top: #33112f;
+    --bg-mid: #130f1b;
+    --bg-bottom: #0b1622;
+    --bg: #130f1b;
+    --surface: #1c1726;
+    --surface-2: #272033;
+    --ink: #f8f3ff;
+    --ink-2: #d2c9e3;
+    --ink-3: #8f86a3;
+    --edge: #f8f3ff;
+    --shadow: #ff4fb8;
+    --line: #332b40;
+    --pink: #ff5fc0;
+    --pink-text: #ff86cf;
+    --pink-soft: #4a1a3b;
+    --sky: #7fd3ff;
+    --lav: #b9a4ff;
+    --lemon: #e6ff7a;
+    --mark-bg: rgb(240 255 112 / 0.28);
+    --mark-ink: #f4ffb0;
+    --bg-dot: rgb(255 255 255 / 0.05);
   }
 }
 
@@ -45,23 +59,30 @@
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
+  --color-edge: var(--edge);
   --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-soft: var(--accent-soft);
-  --color-mark: var(--mark);
-  --color-good: var(--good);
-  --color-hard: var(--hard);
-  --color-good-soft: var(--good-soft);
-  --color-hard-soft: var(--hard-soft);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-    "Noto Sans KR", "Noto Sans JP", "Malgun Gothic", "Yu Gothic", sans-serif;
-  --font-jp: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", -apple-system,
-    sans-serif;
+  --color-pink: var(--pink);
+  --color-pink-text: var(--pink-text);
+  --color-pink-soft: var(--pink-soft);
+  --color-sky: var(--sky);
+  --color-peri: var(--peri);
+  --color-lav: var(--lav);
+  --color-lemon: var(--lemon);
+  --color-black: #17121f;
+  --color-candy: #ffc4e6;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Hiragino Sans", "Noto Sans KR", "Noto Sans JP", sans-serif;
+  --font-display: "Dela Gothic One", "Pretendard Variable", "Hiragino Sans", sans-serif;
+  --font-pixel: "DotGothic16", "Space Mono", monospace;
+  --font-mono: "Space Mono", "Pretendard Variable", ui-monospace, monospace;
+  --font-jp: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo",
+    "Pretendard Variable", sans-serif;
 }
 
 html {
   -webkit-tap-highlight-color: transparent;
+  /* 굵기가 하나뿐인 디스플레이·픽셀 폰트가 가짜 볼드로 뭉개지지 않게 */
+  font-synthesis: none;
 }
 
 body {
@@ -70,8 +91,15 @@ body {
   font-family: var(--font-sans);
 }
 
-.font-jp {
-  font-family: var(--font-jp);
+/* iOS에서 background-attachment: fixed가 안 먹어서 고정 레이어로 깐다 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(var(--bg-dot) 1px, transparent 1.4px) 0 0 / 14px 14px,
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 42%, var(--bg-bottom) 100%);
 }
 
 ruby {
@@ -81,13 +109,9 @@ ruby {
 rt {
   font-size: 0.5em;
   color: var(--ink-3);
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: 0;
   user-select: none;
-}
-
-.hide-ruby rt {
-  visibility: hidden;
 }
 
 .pb-safe {
@@ -98,19 +122,122 @@ rt {
   padding-top: env(safe-area-inset-top);
 }
 
+/* 스티커 카드: 얇은 검정 테두리 + 하늘색 입체 그림자 */
+@utility sticker {
+  background: var(--surface);
+  border: 2px solid var(--edge);
+  border-radius: 1.5rem;
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+
+@utility sticker-sm {
+  border: 2px solid var(--edge);
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+
+@utility shadow-ink {
+  box-shadow: 3px 3px 0 var(--edge);
+}
+
+/* 누르면 그림자 쪽으로 눌리는 버튼 */
+@utility press {
+  transition:
+    transform 80ms ease-out,
+    box-shadow 80ms ease-out;
+  &:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--shadow);
+  }
+}
+
+/* 망점 패턴 */
+@utility dots {
+  background-image: radial-gradient(rgb(23 18 31 / 0.16) 1.1px, transparent 1.5px);
+  background-size: 9px 9px;
+}
+
 @utility input {
   width: 100%;
   border-radius: 1rem;
-  border: 1px solid var(--line);
+  border: 2px solid var(--edge);
   background: var(--surface);
   padding: 0.75rem 1rem;
   font-size: 16px;
   outline: none;
+  transition: box-shadow 120ms;
   &:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: 3px 3px 0 var(--pink);
   }
   &::placeholder {
     color: var(--ink-3);
+  }
+}
+
+/* 픽셀 글씨 강조 (NOT CUTE ANYMORE 느낌) */
+.pixel-pop {
+  font-family: var(--font-pixel);
+  color: var(--pink);
+  text-shadow:
+    1.5px 1.5px 0 var(--surface),
+    3px 3px 0 var(--edge);
+}
+
+/* 디스플레이 폰트는 굵기가 하나라서, 그 폰트에 없는 한글은 가장 굵은 Pretendard로 */
+.font-display {
+  font-weight: 900;
+}
+
+/* 가사 속 단어장 단어: 레몬 형광펜. 후리가나는 빼고 본문 글자 아래쪽만 칠한다. */
+.vocab-word {
+  color: var(--mark-ink);
+  text-decoration-line: underline;
+  text-decoration-color: var(--mark-bg);
+  text-decoration-thickness: 0.42em;
+  text-underline-offset: -0.3em;
+  text-decoration-skip-ink: none;
+}
+
+/* 복습 카드에서 가린 단어 */
+.focus-word {
+  background: var(--pink);
+  color: #17121f;
+  border-radius: 6px;
+  padding: 0 0.15em;
+  font-weight: 700;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-5px) rotate(var(--tilt, 0deg));
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 24s linear infinite;
+}
+
+.bob {
+  animation: bob 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track,
+  .bob {
+    animation: none;
   }
 }

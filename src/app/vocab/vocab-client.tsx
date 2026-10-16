@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon } from "@/components/Icon";
+import { PageHeader } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
+import { Bow } from "@/components/Stickers";
 import { VocabDetail } from "@/components/VocabDetail";
-import { useStore } from "@/lib/store";
+import { VocabRow } from "@/components/VocabRow";
 import { kataToHira } from "@/lib/furigana";
+import { useStore } from "@/lib/store";
 
 export function VocabClient() {
   return (
@@ -37,15 +39,22 @@ function VocabList() {
   );
   const open = openId ? all.find((v) => v.id === openId) : undefined;
   const songsWithVocab = order.filter((id) => songs[id]?.vocab.length);
+  const learned = all.filter((v) => cards[v.id]?.suspended).length;
 
   return (
-    <div className="space-y-4 pt-6">
-      <header className="flex items-end justify-between">
-        <h1 className="text-2xl font-bold">단어장</h1>
-        <span className="text-sm text-ink-3">
-          {all.length}개 · 외운 단어 {all.filter((v) => cards[v.id]?.suspended).length}개
-        </span>
-      </header>
+    <div className="space-y-4">
+      <PageHeader label="WORDBOOK" title="단어장" right={<Bow className="mb-1 w-14 rotate-6" />} />
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="sticker bg-lemon px-4 py-3 text-black">
+          <p className="font-mono text-[10px] font-bold tracking-wider">[ ALL WORDS ]</p>
+          <p className="font-pixel text-[34px] leading-none">{all.length}</p>
+        </div>
+        <div className="sticker bg-candy px-4 py-3 text-black">
+          <p className="font-mono text-[10px] font-bold tracking-wider">[ LEARNED ]</p>
+          <p className="font-pixel text-[34px] leading-none">{learned}</p>
+        </div>
+      </div>
 
       <div className="relative">
         <Icon name="search" className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-3" />
@@ -58,14 +67,14 @@ function VocabList() {
       </div>
 
       {songsWithVocab.length > 1 && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pt-0.5 pb-1.5">
           {[["all", "전체"] as const, ...songsWithVocab.map((id) => [id, songs[id].title] as const)].map(([id, label]) => (
             <button
               key={id}
               type="button"
               onClick={() => setSongFilter(id)}
-              className={`font-jp shrink-0 rounded-full border px-3.5 py-1.5 text-sm ${
-                songFilter === id ? "border-accent bg-accent-soft font-semibold text-accent" : "border-line bg-surface text-ink-2"
+              className={`sticker-sm press shrink-0 rounded-full px-3.5 py-1.5 text-sm font-bold ${
+                songFilter === id ? "bg-ink text-bg" : "bg-surface text-ink-2"
               }`}
             >
               {label}
@@ -79,31 +88,15 @@ function VocabList() {
           {all.length === 0 ? "노래를 추가하면 여기에 단어가 모여요." : "찾는 단어가 없어요."}
         </p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-3xl border border-line bg-surface">
+        <ul className="sticker divide-y divide-line overflow-hidden">
           {items.map((v) => (
-            <li key={v.id}>
-              <button
-                type="button"
-                onClick={() => setOpenId(v.id)}
-                className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-2"
-              >
-                <div className="font-jp min-w-0 flex-1">
-                  <div className="text-xs text-ink-3">{v.reading}</div>
-                  <div className="text-lg font-bold">{v.word}</div>
-                </div>
-                <div className="min-w-0 flex-[1.4]">
-                  <div className="text-[15px] text-ink-2">{v.meaning}</div>
-                  <div className="font-jp truncate text-xs text-ink-3">♪ {songs[v.songId]?.title}</div>
-                </div>
-                <div className="shrink-0">
-                  {cards[v.id]?.suspended ? (
-                    <Icon name="check" className="size-5 text-good" />
-                  ) : (
-                    v.jlpt !== "기타" && <Badge tone="accent">{v.jlpt}</Badge>
-                  )}
-                </div>
-              </button>
-            </li>
+            <VocabRow
+              key={v.id}
+              item={v}
+              suspended={cards[v.id]?.suspended}
+              sub={songs[v.songId]?.title}
+              onClick={() => setOpenId(v.id)}
+            />
           ))}
         </ul>
       )}

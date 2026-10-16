@@ -4,6 +4,7 @@ const PATHS = {
   book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Zm0 0A2.5 2.5 0 0 0 6.5 22H20v-5",
   plus: "M12 5v14M5 12h14",
   back: "M15 18l-6-6 6-6",
+  arrow: "M5 12h14m-6-6 6 6-6 6",
   sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z",
   trash: "M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
   check: "M5 13l4 4L19 7",
@@ -20,7 +21,7 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={2.2}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}

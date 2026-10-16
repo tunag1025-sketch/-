@@ -42,36 +42,37 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
   }, [key, explanation, attempt]);
 
   return (
-    <div className="mt-1 mb-4 rounded-2xl bg-surface-2 px-4 py-3.5 text-[15px]">
+    <div className="mt-1 mb-4 rounded-2xl border-2 border-black bg-lav px-4 py-3.5 text-[15px] text-black">
       {explanation ? (
         <div className="space-y-3">
-          <p className="font-semibold">{explanation.translation}</p>
+          <p className="font-mono text-[10px] font-bold tracking-wider opacity-70">[ TRANSLATION ]</p>
+          <p className="-mt-2 text-[16px] font-extrabold">{explanation.translation}</p>
           <ul className="space-y-1">
             {explanation.breakdown.map((b, i) => (
               <li key={i} className="flex gap-3">
-                <span className="font-jp shrink-0 font-semibold text-accent">{b.part}</span>
-                <span className="text-ink-2">{b.meaning}</span>
+                <span className="font-jp shrink-0 rounded-md bg-white/70 px-1.5 font-bold">{b.part}</span>
+                <span className="opacity-80">{b.meaning}</span>
               </li>
             ))}
           </ul>
-          {explanation.notes && <p className="leading-relaxed text-ink-2">{explanation.notes}</p>}
+          {explanation.notes && <p className="leading-relaxed opacity-80">{explanation.notes}</p>}
         </div>
       ) : error ? (
         <div>
-          <p className="text-ink-2">{error}</p>
+          <p className="opacity-80">{error}</p>
           <button
             type="button"
             onClick={() => {
               setError(null);
               setAttempt((n) => n + 1);
             }}
-            className="mt-1.5 flex items-center gap-1.5 font-semibold text-accent"
+            className="mt-1.5 flex items-center gap-1.5 font-bold"
           >
             <Icon name="refresh" className="size-4" /> 다시 시도
           </button>
         </div>
       ) : (
-        <p className="flex items-center gap-2 text-ink-3">
+        <p className="flex items-center gap-2 opacity-70">
           <Spinner /> 이 줄을 해설하는 중…
         </p>
       )}
