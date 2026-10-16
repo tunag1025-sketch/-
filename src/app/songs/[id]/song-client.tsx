@@ -36,7 +36,7 @@ function SongScreen({ id }: { id: string }) {
   if (!song) {
     return (
       <div className="flex flex-col items-center pt-24 text-center">
-        <Mascot kind="bubble" className="size-20" />
+        <Mascot kind="ball" className="size-20" />
         <p className="mt-4 text-[18px] font-semibold">노래를 찾을 수 없어요</p>
         <p className="mt-1 text-[14px] text-ink-3">삭제됐거나 다른 기기에서 추가한 노래예요.</p>
         <Link href="/" className="btn-primary press mt-6 px-6 py-3 text-[15px] font-semibold">
@@ -257,7 +257,7 @@ function AnalysisStatus({ song }: { song: Song }) {
   if (song.status === "analyzing" && inFlight) {
     return (
       <div className="iris-card mt-5 flex items-center gap-3 px-4 py-4">
-        <Mascot kind="pick" className="float size-12 shrink-0" />
+        <Mascot kind="star" className="float size-12 shrink-0" />
         <div className="min-w-0 flex-1 text-[14px]">
           <p className="flex items-center gap-1.5 font-semibold">
             <Spinner className="size-3.5 text-blue" /> 단어장 만드는 중
@@ -273,7 +273,7 @@ function AnalysisStatus({ song }: { song: Song }) {
   return (
     <div className="card mt-5 px-4 py-4">
       <div className="flex gap-3">
-        <Mascot kind="bubble" className="size-11 shrink-0" />
+        <Mascot kind="ball" className="size-11 shrink-0" />
         <p className="text-[14px] leading-relaxed text-ink-2">{message}</p>
       </div>
       <button

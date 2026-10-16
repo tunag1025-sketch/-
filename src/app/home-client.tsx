@@ -121,7 +121,7 @@ function Home() {
 
       {ai === false && (
         <p className="iris flex items-center gap-3 rounded-3xl px-4 py-3 text-[14px] leading-relaxed text-ink-2">
-          <Mascot kind="bubble" className="size-10 shrink-0" />
+          <Mascot kind="ball" className="size-10 shrink-0" />
           서버에 AI 키가 없어서 지금은 후리가나 가사와 데모곡만 쓸 수 있어요.
         </p>
       )}
@@ -195,7 +195,7 @@ function Home() {
         )}
         {order.length === 0 ? (
           <div className="card flex flex-col items-center px-5 py-9 text-center">
-            <Mascot kind="note" className="float size-20" />
+            <Mascot kind="blob" className="float size-20" />
             <p className="mt-3 font-semibold">첫 노래를 추가해 보세요</p>
             <p className="text-[14px] text-ink-3">가사를 붙여넣으면 단어장이 만들어져요</p>
           </div>

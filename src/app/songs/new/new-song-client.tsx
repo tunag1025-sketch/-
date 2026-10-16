@@ -79,7 +79,7 @@ function NewSongForm() {
       <TopBar backHref="/" title="노래 추가" />
 
       <div className="flex items-center gap-3">
-        <Mascot kind="pick" className="float size-14 shrink-0" style={{ "--tilt": "-8deg" } as React.CSSProperties} />
+        <Mascot kind="star" className="float size-14 shrink-0" style={{ "--tilt": "-8deg" } as React.CSSProperties} />
         <p className="rounded-2xl rounded-bl-md bg-surface px-3.5 py-2 text-[14px] font-medium text-ink-2 shadow-[var(--shadow)]">
           가사만 붙여넣으면 나머지는 제가 할게요!
         </p>

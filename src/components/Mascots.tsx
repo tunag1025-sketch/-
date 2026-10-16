@@ -2,175 +2,133 @@
 
 import { useId } from "react";
 
-// Utango 캐릭터 넷. 복습 답(다시·어려움·알맞음·쉬움)과 화면 곳곳의 표정을 맡는다.
-//  note   음표  · 파랑   · 알맞음 (기분 좋음)
-//  pick   기타 피크 · 노랑 · 쉬움 (신남)
-//  bubble 말풍선 · 보라   · 어려움 (졸림)
-//  heart  하트  · 핑크   · 다시 (뾰로통)
-// 2.5D 유리 질감: 반투명 그라데이션 몸통 + 뒤쪽 두께 + 위쪽 빛 + 흰 테두리. 이미지 파일 없이 SVG 한 장.
-export type MascotKind = "note" | "pick" | "bubble" | "heart";
+// Utango 캐릭터 넷: 뿌옇게 번지는 유리 젤리에 빛나는 타원 눈 두 개.
+// 몸 밖으로 번지는 오라 + 윗가장자리 뒤의 빛 + 위쪽이 하얗게 서린 그라데이션 + 흐릿한 경계.
+//  blob  덩어리 · 파랑  · 알맞음
+//  star  별    · 노랑  · 쉬움
+//  ball  공    · 핑크  · 어려움
+//  heart 하트  · 빨강  · 다시
+export type MascotKind = "blob" | "star" | "ball" | "heart";
 
-const PALETTE: Record<MascotKind, { light: string; mid: string; deep: string; ink: string }> = {
-  note: { light: "#9fd0ff", mid: "#4a8dff", deep: "#2156f5", ink: "#0d2f8a" },
-  pick: { light: "#fff1a3", mid: "#ffcb3d", deep: "#ff9d0a", ink: "#7a4200" },
-  bubble: { light: "#d2c4ff", mid: "#9a7dff", deep: "#6541f5", ink: "#2c1690" },
-  heart: { light: "#ffc8dc", mid: "#ff79ab", deep: "#f23d7e", ink: "#8c0d43" },
+type Look = { top: string; mid: string; bottom: string; aura: string; rim: string };
+
+const LOOK: Record<MascotKind, Look> = {
+  blob: { top: "#ece9ff", mid: "#78a9ff", bottom: "#3d64ff", aura: "#ff6fe0", rim: "#45e4ff" },
+  star: { top: "#fffbe8", mid: "#ffd96e", bottom: "#ffad2b", aura: "#ff9a5c", rim: "#fff08a" },
+  ball: { top: "#fff1fb", mid: "#f6b6ef", bottom: "#e47fe4", aura: "#ff9bea", rim: "#ffc8f3" },
+  heart: { top: "#ffeef0", mid: "#ff8d98", bottom: "#f5455f", aura: "#ff5fb0", rim: "#ffc3a8" },
 };
 
-// 몸통 실루엣 (한 덩어리 path라 테두리·두께를 같은 모양으로 겹칠 수 있다)
+/** 꼭짓점을 둥글린 별 */
+function roundedStar(cx: number, cy: number, outer: number, inner: number, round: number) {
+  const pts = Array.from({ length: 10 }, (_, i) => {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
+  const lerp = (a: number[], b: number[], t: number) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const f = (p: number[]) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+  let d = "";
+  pts.forEach((p, i) => {
+    const t = i % 2 === 0 ? round : round * 0.6;
+    const a = lerp(p, pts[(i + 9) % 10], t);
+    const b = lerp(p, pts[(i + 1) % 10], t);
+    d += `${i === 0 ? "M" : "L"}${f(a)}Q${f(p)} ${f(b)}`;
+  });
+  return `${d}Z`;
+}
+
 const BODY: Record<MascotKind, string> = {
-  note: "M60 16Q60 9 67 9C83 10 96 23 93 41C89 33 81 28 70 27V59A30 25 0 1 1 60 48Z",
-  pick: "M50 93C42 87 13 54 11 36 9 19 26 9 50 9s41 10 39 27C87 54 58 87 50 93Z",
-  bubble:
-    "M24 14h52c9 0 15 6 15 15v31c0 9-6 15-15 15H46L28 89c-1.5 1-3.5 0-3-2l3-12h-4c-9 0-15-6-15-15V29c0-9 6-15 15-15Z",
-  heart: "M50 88C24 70 8 54 8 35 8 21 19 11 32 11c8 0 14 4 18 10 4-6 10-10 18-10 13 0 24 10 24 24 0 19-16 35-42 53Z",
+  blob: "M60 26C86 26 98 44 98 65c0 21-14 31-38 31S22 86 22 65C22 44 34 26 60 26Z",
+  heart: "M60 97C35 80 21 66 21 46c0-13 10-22 23-22 7 0 12 3 16 9 4-6 9-9 16-9 13 0 23 9 23 22 0 20-14 34-39 51Z",
+  star: roundedStar(60, 63, 42, 22, 0.32),
+  ball: "M60 26a35 35 0 1 1 0 70a35 35 0 1 1 0-70Z",
 };
 
-// 웃는 얼굴(커버용)의 눈·입 자리
-const HAPPY: Record<MascotKind, { eyes: [number, number][]; mouth: [number, number] }> = {
-  note: { eyes: [[31, 66], [50, 65]], mouth: [41, 77] },
-  pick: { eyes: [[38, 38], [62, 38]], mouth: [50, 55] },
-  bubble: { eyes: [[37, 42], [63, 42]], mouth: [50, 57] },
-  heart: { eyes: [[37, 43], [63, 43]], mouth: [50, 58] },
+// 눈 두 개의 가운데, 간격, 크기
+const EYES: Record<MascotKind, { x: number; y: number; gap: number; rx: number; ry: number }> = {
+  blob: { x: 60, y: 67, gap: 14, rx: 8.6, ry: 11.8 },
+  heart: { x: 60, y: 55, gap: 12.5, rx: 7.6, ry: 10.4 },
+  star: { x: 60, y: 65, gap: 9.5, rx: 6, ry: 8.2 },
+  ball: { x: 60, y: 64, gap: 12.5, rx: 7.8, ry: 10.6 },
 };
 
-function Eye({ cx, cy, r = 8.5, ink, id }: { cx: number; cy: number; r?: number; ink: string; id: string }) {
-  return (
-    <>
-      <ellipse cx={cx + 0.8} cy={cy + 1.6} rx={r} ry={r * 1.04} fill={ink} opacity={0.18} />
-      <ellipse cx={cx} cy={cy} rx={r} ry={r * 1.04} fill={`url(#w${id})`} />
-      <circle cx={cx + 1.4} cy={cy + 1.6} r={r * 0.56} fill={ink} />
-      <circle cx={cx + 3.1} cy={cy - 0.4} r={r * 0.2} fill="#fff" />
-    </>
-  );
-}
-
-function Smile({ x, y, ink, w = 4 }: { x: number; y: number; ink: string; w?: number }) {
-  return <path d={`M${x - w} ${y}q${w} ${w} ${w * 2} 0`} fill="none" stroke={ink} strokeWidth={2.3} strokeLinecap="round" />;
-}
-
-function Blush({ x, y }: { x: number; y: number }) {
-  return <ellipse cx={x} cy={y} rx={5} ry={2.8} fill="#ff6fa5" opacity={0.35} />;
-}
-
-function Face({ kind, happy, id }: { kind: MascotKind; happy: boolean; id: string }) {
-  const { ink } = PALETTE[kind];
-  if (happy || kind === "note") {
-    const { eyes, mouth } = HAPPY[kind];
-    return (
-      <>
-        {eyes.map(([x, y]) => (
-          <Eye key={x} cx={x} cy={y} ink={ink} id={id} />
-        ))}
-        <Smile x={mouth[0]} y={mouth[1]} ink={ink} />
-        <Blush x={eyes[0][0] - 8} y={eyes[0][1] + 10} />
-        <Blush x={eyes[1][0] + 8} y={eyes[1][1] + 10} />
-      </>
-    );
-  }
-  switch (kind) {
-    case "pick":
-      return (
-        <>
-          <Eye cx={38} cy={38} r={9} ink={ink} id={id} />
-          <path d="M57 41q5-7 10 0" fill="none" stroke={ink} strokeWidth={3} strokeLinecap="round" />
-          <ellipse cx={50} cy={56} rx={4.2} ry={3.6} fill={ink} opacity={0.85} />
-          <Blush x={28} y={51} />
-          <Blush x={72} y={51} />
-        </>
-      );
-    case "bubble":
-      return (
-        <>
-          {[37, 63].map((cx) => (
-            <g key={cx}>
-              <Eye cx={cx} cy={42} r={9.5} ink={ink} id={id} />
-              <path d={`M${cx - 10} 42a10 10 0 0 1 20 0Z`} fill={PALETTE.bubble.deep} opacity={0.92} />
-            </g>
-          ))}
-          <path d="M43 59q3.5-3 7 0t7 0" fill="none" stroke={ink} strokeWidth={2.2} strokeLinecap="round" />
-        </>
-      );
-    case "heart":
-      return (
-        <>
-          {[28, 54].map((x) => (
-            <g key={x}>
-              <path d={`M${x} 41h18a9 9 0 0 1-18 0Z`} fill={`url(#w${id})`} />
-              <circle cx={x + 9.6} cy={44.6} r={3.9} fill={ink} />
-              <circle cx={x + 11} cy={43} r={1.2} fill="#fff" />
-            </g>
-          ))}
-          <path d="M44 63q6-5 12 0" fill="none" stroke={ink} strokeWidth={2.3} strokeLinecap="round" />
-          <Blush x={24} y={56} />
-          <Blush x={76} y={56} />
-        </>
-      );
-    default:
-      return null;
-  }
-}
-
-/** 반투명 2.5D 캐릭터 */
+/** 젤리 캐릭터 */
 export function Mascot({
   kind,
   className = "size-16",
   style,
-  happy = false,
 }: {
   kind: MascotKind;
   className?: string;
   style?: React.CSSProperties;
-  /** 캐릭터 고유 표정 대신 웃는 얼굴 */
-  happy?: boolean;
 }) {
   const id = useId().replace(/:/g, "");
-  const p = PALETTE[kind];
+  const c = LOOK[kind];
   const d = BODY[kind];
+  const e = EYES[kind];
+  const url = (n: string) => `url(#${n}${id})`;
+  const blur = (n: string, s: number) => (
+    <filter id={`${n}${id}`} x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation={s} />
+    </filter>
+  );
   return (
-    <svg viewBox="-4 -4 108 112" className={className} style={style} aria-hidden>
+    <svg viewBox="0 0 120 120" className={className} style={{ overflow: "visible", ...style }} aria-hidden>
       <defs>
-        <linearGradient id={`f${id}`} x1="0.12" y1="0" x2="0.88" y2="1">
-          <stop offset="0" stopColor={p.light} stopOpacity={0.8} />
-          <stop offset="0.55" stopColor={p.mid} stopOpacity={0.86} />
-          <stop offset="1" stopColor={p.deep} stopOpacity={0.76} />
+        {blur("aura", 10)}
+        {blur("rimb", 3.2)}
+        {blur("soft", 1.8)}
+        {blur("haze", 6)}
+        {blur("eg", 2.4)}
+        <linearGradient id={`body${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={c.top} />
+          <stop offset="0.45" stopColor={c.mid} />
+          <stop offset="1" stopColor={c.bottom} />
         </linearGradient>
-        <linearGradient id={`d${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={p.mid} stopOpacity={0.35} />
-          <stop offset="1" stopColor={p.deep} stopOpacity={0.55} />
+        {/* 윗부분에만 빛이 남도록 위에서 아래로 사라지는 테두리 */}
+        <linearGradient id={`rim${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={c.rim} stopOpacity={1} />
+          <stop offset="0.35" stopColor={c.rim} stopOpacity={0.6} />
+          <stop offset="0.6" stopColor={c.rim} stopOpacity={0} />
         </linearGradient>
-        <radialGradient id={`g${id}`} cx="0.3" cy="0.18" r="0.62">
-          <stop offset="0" stopColor="#fff" stopOpacity={0.85} />
-          <stop offset="0.45" stopColor="#fff" stopOpacity={0.2} />
-          <stop offset="1" stopColor="#fff" stopOpacity={0} />
-        </radialGradient>
-        <linearGradient id={`r${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#fff" stopOpacity={0.9} />
-          <stop offset="0.6" stopColor="#fff" stopOpacity={0.15} />
-          <stop offset="1" stopColor="#fff" stopOpacity={0.45} />
-        </linearGradient>
-        <linearGradient id={`w${id}`} x1="0" y1="0" x2="0" y2="1">
+        <radialGradient id={`eye${id}`} cx="0.42" cy="0.38" r="0.7">
           <stop offset="0" stopColor="#ffffff" />
-          <stop offset="1" stopColor="#e9efff" />
-        </linearGradient>
-        <clipPath id={`c${id}`}>
+          <stop offset="0.65" stopColor="#f3f9ff" />
+          <stop offset="1" stopColor="#cfe6ff" />
+        </radialGradient>
+        <clipPath id={`clip${id}`}>
           <path d={d} />
         </clipPath>
       </defs>
-      {/* 바닥 그림자 */}
-      <ellipse cx="52" cy="101" rx="28" ry="3.5" fill={p.deep} opacity={0.12} />
-      {/* 뒤쪽 두께 */}
-      <path d={d} fill={`url(#d${id})`} transform="translate(3.5 4.5)" />
-      {/* 몸통 */}
-      <path d={d} fill={`url(#f${id})`} />
-      {/* 위쪽 빛과 아래 안쪽 그늘 */}
-      <g clipPath={`url(#c${id})`}>
-        <rect x="-4" y="-4" width="108" height="112" fill={`url(#g${id})`} />
-        <path d={d} fill="none" stroke={p.deep} strokeOpacity={0.25} strokeWidth={6} transform="translate(-2 -3)" />
+
+      {/* 몸 밖으로 번지는 오라 */}
+      <path d={d} fill={c.aura} opacity={0.68} filter={url("aura")} transform="translate(60 64) scale(1.2) translate(-60 -64)" />
+      {/* 윗가장자리 뒤에서 비치는 빛 */}
+      <path d={d} fill="none" stroke={url("rim")} strokeWidth={9} filter={url("rimb")} transform="translate(0 -3)" />
+
+      {/* 흐릿한 경계의 몸통 */}
+      <g filter={url("soft")}>
+        <path d={d} fill={url("body")} opacity={0.96} />
+        <g clipPath={url("clip")}>
+          {/* 위쪽이 하얗게 서린 느낌 */}
+          <ellipse cx="60" cy="40" rx="36" ry="19" fill="#ffffff" opacity={0.78} filter={url("haze")} />
+          {/* 아래쪽 가장자리가 조금 더 진하게 */}
+          <path d={d} fill="none" stroke={c.bottom} strokeWidth={8} opacity={0.35} filter={url("haze")} transform="translate(0 5)" />
+        </g>
       </g>
-      {/* 유리 테두리 */}
-      <path d={d} fill="none" stroke={`url(#r${id})`} strokeWidth={1.6} />
-      <Face kind={kind} happy={happy} id={id} />
+
+      {/* 은은하게 빛나는 타원 눈 */}
+      {[-1, 1].map((s) => {
+        const cx = e.x + s * e.gap;
+        const tilt = s === 1 ? 8 : -2;
+        return (
+          <g key={s} transform={`rotate(${tilt} ${cx} ${e.y})`}>
+            <ellipse cx={cx} cy={e.y} rx={e.rx * 1.35} ry={e.ry * 1.3} fill="#ffffff" opacity={0.55} filter={url("eg")} />
+            <ellipse cx={cx} cy={e.y} rx={e.rx} ry={e.ry} fill={url("eye")} />
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -196,16 +154,15 @@ export function Twinkle({
 export function MascotGroup({ className = "w-32" }: { className?: string }) {
   return (
     <div className={`relative aspect-[5/4] ${className}`} aria-hidden>
-      <Mascot kind="pick" happy className="absolute top-[2%] left-[6%] w-[38%]" style={{ transform: "rotate(-12deg)" }} />
-      <Mascot kind="heart" happy className="absolute top-0 right-[4%] w-[40%]" style={{ transform: "rotate(10deg)" }} />
-      <Mascot kind="note" className="absolute bottom-0 left-0 w-[50%]" />
-      <Mascot kind="bubble" happy className="absolute right-0 bottom-[4%] w-[44%]" style={{ transform: "rotate(-6deg)" }} />
-      <Twinkle color="#ff9fc6" className="absolute top-[40%] left-[45%] w-[11%]" />
+      <Mascot kind="star" className="absolute -top-[2%] left-0 w-[42%]" style={{ transform: "rotate(-10deg)" }} />
+      <Mascot kind="heart" className="absolute -top-[6%] right-0 w-[50%]" />
+      <Mascot kind="blob" className="absolute -bottom-[6%] left-[6%] w-[52%]" />
+      <Mascot kind="ball" className="absolute right-[2%] -bottom-[2%] w-[42%]" />
     </div>
   );
 }
 
-const MASCOT_FOR_SONG: MascotKind[] = ["note", "pick", "bubble", "heart"];
+const MASCOT_FOR_SONG: MascotKind[] = ["blob", "star", "ball", "heart"];
 
 export function mascotFor(id: string): MascotKind {
   let h = 0;

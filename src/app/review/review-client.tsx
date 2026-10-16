@@ -15,12 +15,12 @@ import { streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 import type { Grade } from "@/lib/types";
 
-// 답은 캐릭터 표정으로 고른다: 뾰로통(다시) · 졸림(어려움) · 기분 좋음(알맞음) · 신남(쉬움)
+// 답은 캐릭터로 고른다: 하트(다시) · 공(어려움) · 덩어리(알맞음) · 별(쉬움)
 const GRADES: { grade: Grade; label: string; mascot: MascotKind }[] = [
   { grade: "again", label: "다시", mascot: "heart" },
-  { grade: "hard", label: "어려움", mascot: "bubble" },
-  { grade: "good", label: "알맞음", mascot: "note" },
-  { grade: "easy", label: "쉬움", mascot: "pick" },
+  { grade: "hard", label: "어려움", mascot: "ball" },
+  { grade: "good", label: "알맞음", mascot: "blob" },
+  { grade: "easy", label: "쉬움", mascot: "star" },
 ];
 
 export function ReviewClient() {
@@ -178,7 +178,7 @@ function Finished({
 
   return (
     <div className="flex flex-col items-center pt-14 text-center">
-      {empty ? <Mascot kind="bubble" className="float size-24" /> : <MascotGroup className="float w-44" />}
+      {empty ? <Mascot kind="ball" className="float size-24" /> : <MascotGroup className="float w-44" />}
       <Headline
         className="mt-6 text-[28px]"
         first={empty ? "지금은" : "오늘 복습"}

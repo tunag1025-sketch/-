@@ -48,7 +48,7 @@ function VocabList() {
     <div className="space-y-5 pt-5">
       <div className="flex items-end justify-between gap-3">
         <Headline first="노래에서 모은" second="나의 단어장" />
-        <Mascot kind="bubble" className="float size-16 shrink-0" style={{ "--tilt": "8deg" } as React.CSSProperties} />
+        <Mascot kind="ball" className="float size-16 shrink-0" style={{ "--tilt": "8deg" } as React.CSSProperties} />
       </div>
 
       <div className="card grid grid-cols-3 py-4">
@@ -89,7 +89,7 @@ function VocabList() {
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center py-12 text-center">
-          <Mascot kind={all.length === 0 ? "note" : "bubble"} className="size-16" />
+          <Mascot kind={all.length === 0 ? "blob" : "ball"} className="size-16" />
           <p className="mt-3 text-[14px] text-ink-3">
             {all.length === 0 ? "노래를 추가하면 여기에 단어가 모여요." : "찾는 단어가 없어요."}
           </p>
