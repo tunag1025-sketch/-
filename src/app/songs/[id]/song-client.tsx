@@ -7,6 +7,7 @@ import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
+import { MemoryBar, MemoryLegend } from "@/components/MemoryBar";
 import { CircleButton, Headline, TopBar } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { SongCover } from "@/components/SongCover";
@@ -19,7 +20,7 @@ import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-cl
 import type { Artwork } from "@/lib/artwork";
 import { fileToCover } from "@/lib/image";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
-import { isLearned } from "@/lib/srs";
+import { memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song } from "@/lib/types";
 import { LineExplain } from "./line-explain";
@@ -64,7 +65,7 @@ function SongView({ song }: { song: Song }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const word = openWord ? song.vocab.find((v) => v.id === openWord) : undefined;
-  const learned = song.vocab.filter((v) => isLearned(cards[v.id])).length;
+  const memory = progressOf(song.vocab, cards);
   const total = song.vocab.length;
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
@@ -106,8 +107,17 @@ function SongView({ song }: { song: Song }) {
         <div className="card mt-5 px-2 pt-4 pb-3">
           <div className="grid grid-cols-3">
             <Stat value={total} label="단어" />
-            <Stat value={song.grammar.length} label="문법" />
-            <Stat value={learned} label="외운 단어" />
+            <Stat value={memory.short} label="단기기억" />
+            <Stat value={memory.long} label="장기기억" />
+          </div>
+          <div className="mx-2 mt-4">
+            <MemoryBar total={total} long={memory.long} short={memory.short} className="h-2" />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="num text-[12px] font-semibold text-ink-3">
+                {memory.long + memory.short}/{total}
+              </span>
+              <MemoryLegend />
+            </div>
           </div>
           <Link
             href={reviewHref(song.id)}
@@ -204,7 +214,7 @@ function SongView({ song }: { song: Song }) {
         <ul className="card divide-y divide-line overflow-hidden">
           {total === 0 && <EmptyAnalysis song={song} />}
           {song.vocab.map((v) => (
-            <VocabRow key={v.id} item={v} learned={cards[v.id]?.learned} onClick={() => setOpenWord(v.id)} />
+            <VocabRow key={v.id} item={v} memory={memoryOf(cards[v.id])} onClick={() => setOpenWord(v.id)} />
           ))}
         </ul>
       )}

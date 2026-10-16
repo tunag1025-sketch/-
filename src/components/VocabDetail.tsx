@@ -1,6 +1,6 @@
 "use client";
 
-import { LEARNED_INTERVAL_DAYS, LEARNED_PERFECT_STREAK } from "@/lib/srs";
+import { LEARNED_INTERVAL_DAYS, LEARNED_PERFECT_STREAK, memoryOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song, VocabItem } from "@/lib/types";
 import { Badge } from "./Badge";
@@ -44,13 +44,14 @@ export function VocabDetail({
   item: VocabItem;
   song?: Song;
   showHeading?: boolean;
-  /** 외운 단어로 옮긴 뒤 불린다 (학습 화면에서 다음 카드로 넘길 때) */
+  /** 장기기억으로 옮긴 뒤 불린다 (학습 화면에서 다음 카드로 넘길 때) */
   onLearned?: () => void;
 }) {
   const card = useStore((s) => s.cards[item.id]);
   const setLearned = useStore((s) => s.setLearned);
   const furigana = useStore((s) => s.settings.furigana);
   const learned = card?.learned ?? false;
+  const memory = memoryOf(card);
 
   return (
     <div className="space-y-6">
@@ -59,6 +60,8 @@ export function VocabDetail({
         <div className="mb-2.5 flex flex-wrap gap-1.5">
           <Badge>{item.pos}</Badge>
           {item.jlpt !== "기타" && <Badge tone="blue">JLPT {item.jlpt}</Badge>}
+          {memory === "long" && <Badge tone="solid">장기기억</Badge>}
+          {memory === "short" && <Badge tone="short">단기기억</Badge>}
         </div>
         <p className="text-[21px] leading-snug font-bold">{item.meaning}</p>
         {item.note && <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{item.note}</p>}
@@ -110,15 +113,16 @@ export function VocabDetail({
         >
           {learned ? (
             <>
-              <Icon name="check" className="size-4" /> 외운 단어 · 다시 학습하기
+              <Icon name="check" className="size-4" /> 장기기억 · 다시 학습하기
             </>
           ) : (
-            "이미 아는 단어예요 · 외운 단어로 옮기기"
+            "이미 아는 단어예요 · 장기기억으로 옮기기"
           )}
         </button>
         {!learned && (
           <p className="mt-2 text-center text-[12px] leading-relaxed text-ink-3">
-            완벽을 {LEARNED_PERFECT_STREAK}번 연달아 고르거나 {LEARNED_INTERVAL_DAYS / 7}주 넘게 기억하면 저절로 옮겨져요.
+            이해·완벽을 한 번 고르면 단기기억, 완벽을 {LEARNED_PERFECT_STREAK}번 연달아 고르거나{" "}
+            {LEARNED_INTERVAL_DAYS / 7}주 넘게 기억하면 장기기억으로 옮겨져요.
           </p>
         )}
       </div>

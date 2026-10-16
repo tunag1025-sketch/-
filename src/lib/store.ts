@@ -18,7 +18,7 @@ type State = UserData & {
   updateSong: (id: string, patch: Partial<Song>) => void;
   removeSong: (id: string) => void;
   grade: (vocabId: string, grade: Grade) => void;
-  /** 외운 단어로 옮기거나 다시 학습 목록으로 돌린다. */
+  /** 장기기억으로 옮기거나 다시 학습 목록으로 돌린다. */
   setLearned: (vocabId: string, learned: boolean) => void;
   setExplanation: (key: string, explanation: LineExplanation) => void;
   setSettings: (patch: Partial<Settings>) => void;
@@ -104,7 +104,7 @@ export const useStore = create<State>()(
           const next: CardState = learned
             ? { ...card, learned: true, learnedAt: now, updatedAt: now }
             : { ...card, learned: false, learnedAt: undefined, perfect: 0, due: now, updatedAt: now };
-          // 처음 보는 단어를 바로 외운 단어로 옮겨도 오늘 배운 새 단어로 센다.
+          // 처음 보는 단어를 바로 장기기억으로 옮겨도 오늘 배운 새 단어로 센다.
           const day = dayKey(now);
           const isNew = !s.cards[vocabId];
           return {
@@ -129,7 +129,7 @@ export const useStore = create<State>()(
       migrate: (persisted, version) => {
         const state = persisted as Partial<State> & { cards?: Record<string, CardState & { suspended?: boolean }> };
         if (version < 1 && state.cards) {
-          // 예전 '복습에서 빼기'(suspended)와 3주 넘게 기억한 단어는 외운 단어로 옮긴다.
+          // 예전 '복습에서 빼기'(suspended)와 3주 넘게 기억한 단어는 장기기억으로 옮긴다.
           state.cards = Object.fromEntries(
             Object.entries(state.cards).map(([id, { suspended, ...card }]) => {
               const learned = suspended === true || card.interval >= LEARNED_INTERVAL_DAYS;

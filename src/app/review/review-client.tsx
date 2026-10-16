@@ -15,7 +15,7 @@ import { fetchExplanation } from "@/lib/api-client";
 import { speak } from "@/lib/speech";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
 import { blankAnswer, makeChoices, pickQuizType, type QuizType, readingMatches } from "@/lib/quiz";
-import { graduates, intervalLabel, newCard } from "@/lib/srs";
+import { graduates, intervalLabel, memoryOf, newCard } from "@/lib/srs";
 import { streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 import type { Grade, Song, VocabItem } from "@/lib/types";
@@ -59,6 +59,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
   const [pos, setPos] = useState(0);
   const [doneCount, setDoneCount] = useState(0);
   const [learnedCount, setLearnedCount] = useState(0);
+  const [shortCount, setShortCount] = useState(0);
   const [toast, setToast] = useState<{ n: number; text: string } | null>(null);
 
   useEffect(() => {
@@ -81,7 +82,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
     if (done) setDoneCount((n) => n + 1);
     if (learned) {
       setLearnedCount((n) => n + 1);
-      setToast((t) => ({ n: (t?.n ?? 0) + 1, text: `${current!.item.word} · 외운 단어로 옮겼어요` }));
+      setToast((t) => ({ n: (t?.n ?? 0) + 1, text: `${current!.item.word} · 장기기억으로 옮겼어요` }));
       // "다시"로 뒤에 붙여 둔 같은 카드도 뺀다.
       setQueue((q) => q.filter((id, i) => i <= pos || id !== currentId));
     }
@@ -90,9 +91,12 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
   }
 
   function answer(g: Grade) {
-    const wasLearned = useStore.getState().cards[currentId]?.learned === true;
+    const before = memoryOf(useStore.getState().cards[currentId]);
     grade(currentId, g);
-    const nowLearned = useStore.getState().cards[currentId]?.learned === true;
+    const after = memoryOf(useStore.getState().cards[currentId]);
+    const wasLearned = before === "long";
+    const nowLearned = after === "long";
+    if (before === "none" && after === "short") setShortCount((n) => n + 1);
     if (g === "again") setQueue((q) => [...q, currentId]);
     advance(g !== "again", nowLearned && !wasLearned);
   }
@@ -116,6 +120,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
         <Finished
           total={doneCount}
           learned={learnedCount}
+          short={shortCount}
           songTitle={songId ? songs[songId]?.title : undefined}
           songId={songId}
           extra={extra}
@@ -411,7 +416,7 @@ function ReviewCard({
                   >
                     <span className="text-[16px] font-semibold">{g.label}</span>
                     <span className="num text-[12px] font-medium">
-                      {graduates(state, g.grade, now) ? "외운 단어로" : intervalLabel(state, g.grade, now)}
+                      {graduates(state, g.grade, now) ? "장기기억으로" : intervalLabel(state, g.grade, now)}
                     </span>
                   </button>
                 ))}
@@ -449,6 +454,7 @@ function ReviewCard({
 function Finished({
   total,
   learned,
+  short,
   songTitle,
   songId,
   extra,
@@ -457,6 +463,7 @@ function Finished({
 }: {
   total: number;
   learned: number;
+  short: number;
   songTitle?: string;
   songId?: string;
   extra: number;
@@ -495,9 +502,10 @@ function Finished({
           : `${songTitle ? `'${songTitle}' ` : ""}단어를 모두 복습했어요.`}
       </p>
       {!empty && (
-        <div className="card mt-7 grid w-full grid-cols-3 py-5">
+        <div className="card mt-7 grid w-full grid-cols-4 py-5">
           <Stat className="text-[34px]" value={total} label="복습한 단어" />
-          <Stat className="text-[34px]" value={learned} label="새로 외운 단어" />
+          <Stat className="text-[34px]" value={short} label="새 단기기억" />
+          <Stat className="text-[34px]" value={learned} label="새 장기기억" />
           <Stat className="text-[34px]" value={days} label="일 연속" />
         </div>
       )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { graduates, intervalLabel, isDue, isLearned, newCard, schedule } from "../srs";
+import { graduates, intervalLabel, isDue, isLearned, memoryOf, newCard, progressOf, schedule } from "../srs";
 import type { CardState, Grade } from "../types";
 
 const DAY = 86_400_000;
@@ -76,5 +76,21 @@ describe("isDue", () => {
   it("treats unseen cards as due and skips learned ones", () => {
     expect(isDue(undefined, now)).toBe(true);
     expect(isDue({ ...newCard(now), learned: true }, now)).toBe(false);
+  });
+});
+
+describe("memory levels", () => {
+  it("puts a word in short-term memory after one 이해 or 완벽, long-term once learned", () => {
+    expect(memoryOf(undefined)).toBe("none");
+    expect(memoryOf(run(["again"]))).toBe("none");
+    expect(memoryOf(run(["good"]))).toBe("short");
+    // 한 번 맞힌 단어는 다시를 눌러도 단기기억에 남는다.
+    expect(memoryOf(run(["good", "again"]))).toBe("short");
+    expect(memoryOf(run(["perfect", "perfect", "perfect"]))).toBe("long");
+  });
+
+  it("counts progress by level", () => {
+    const cards = { a: run(["good"]), b: run(["perfect", "perfect", "perfect"]), c: run(["again"]) };
+    expect(progressOf([{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }], cards)).toEqual({ total: 4, long: 1, short: 1 });
   });
 });

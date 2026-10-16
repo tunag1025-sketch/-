@@ -114,7 +114,7 @@ function Study() {
               </span>
             }
             title="모은 단어 전체"
-            sub={`노래 ${ready.length}곡 · 외운 단어는 빼고`}
+            sub={`노래 ${ready.length}곡 · 장기기억 단어는 빼고`}
             count={plan.all.queue.length}
           />
           {ready.map((id) => (

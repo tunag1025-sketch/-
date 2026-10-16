@@ -10,7 +10,7 @@ import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
 import { kataToHira } from "@/lib/furigana";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
-import { isLearned } from "@/lib/srs";
+import { type Memory, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 
 export function VocabClient() {
@@ -21,11 +21,12 @@ export function VocabClient() {
   );
 }
 
-type Status = "all" | "studying" | "learned";
+type Status = "all" | Memory;
 const STATUSES: [Status, string][] = [
   ["all", "전체"],
-  ["studying", "학습 중"],
-  ["learned", "외운 단어"],
+  ["none", "학습 전"],
+  ["short", "단기기억"],
+  ["long", "장기기억"],
 ];
 
 function VocabList() {
@@ -47,18 +48,23 @@ function VocabList() {
   const q = kataToHira(query.trim().toLowerCase());
   const items = all.filter(
     (v) =>
-      (status === "all" || (status === "learned") === isLearned(cards[v.id])) &&
+      (status === "all" || memoryOf(cards[v.id]) === status) &&
       (songFilter === "all" || v.songId === songFilter) &&
       (!q || v.word.includes(q) || v.reading.includes(q) || v.meaning.toLowerCase().includes(q)),
   );
   const open = openId ? all.find((v) => v.id === openId) : undefined;
   const songsWithVocab = order.filter((id) => songs[id]?.vocab.length);
-  const learned = all.filter((v) => isLearned(cards[v.id])).length;
+  const memory = progressOf(all, cards);
   const today = useMemo(
     () => buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }).queue.length,
     [songs, order, cards, now, dailyNew, newLog],
   );
-  const counts: Record<Status, number> = { all: all.length, studying: all.length - learned, learned };
+  const counts: Record<Status, number> = {
+    all: all.length,
+    none: all.length - memory.long - memory.short,
+    short: memory.short,
+    long: memory.long,
+  };
 
   return (
     <div className="space-y-5 pt-5">
@@ -72,7 +78,7 @@ function VocabList() {
             <p className="text-[13px] text-ink-3">
               {today ? (
                 <>
-                  외운 단어는 빼고 · 오늘 <span className="num">{today}</span>개
+                  장기기억 단어는 빼고 · 오늘 <span className="num">{today}</span>개
                 </>
               ) : (
                 "오늘 학습할 단어를 다 했어요"
@@ -83,7 +89,7 @@ function VocabList() {
         </Link>
       )}
 
-      <div className="grid grid-cols-3 rounded-full bg-muted p-1" role="tablist" aria-label="단어 상태">
+      <div className="grid grid-cols-4 rounded-full bg-muted p-1" role="tablist" aria-label="단어 상태">
         {STATUSES.map(([key, label]) => (
           <button
             key={key}
@@ -91,9 +97,10 @@ function VocabList() {
             role="tab"
             aria-selected={status === key}
             onClick={() => setStatus(key)}
-            className="press rounded-full py-2 text-[14px] font-semibold text-ink-3 aria-selected:bg-surface aria-selected:text-ink aria-selected:shadow-sm"
+            className="press flex flex-col items-center rounded-full py-1.5 text-[13px] leading-tight font-semibold text-ink-3 aria-selected:bg-surface aria-selected:text-ink aria-selected:shadow-sm"
           >
-            {label} <span className="num font-medium">{counts[key]}</span>
+            {label}
+            <span className="num text-[12px] font-medium">{counts[key]}</span>
           </button>
         ))}
       </div>
@@ -136,9 +143,13 @@ function VocabList() {
               ? "노래를 추가하면 여기에 단어가 모여요."
               : q || songFilter !== "all"
                 ? "찾는 단어가 없어요."
-                : status === "learned"
-                  ? "아직 외운 단어가 없어요. 학습에서 완벽을 고르면 여기로 모여요."
-                  : "모든 단어를 외웠어요!"}
+                : status === "long"
+                  ? "아직 장기기억 단어가 없어요. 완벽을 3번 연달아 고르면 여기로 와요."
+                  : status === "short"
+                    ? "아직 단기기억 단어가 없어요. 학습에서 이해나 완벽을 고르면 여기로 와요."
+                    : status === "none"
+                      ? "모든 단어를 한 번 이상 맞혔어요!"
+                      : "단어가 없어요."}
           </p>
         </div>
       ) : (
@@ -147,7 +158,7 @@ function VocabList() {
             <VocabRow
               key={v.id}
               item={v}
-              learned={cards[v.id]?.learned}
+              memory={memoryOf(cards[v.id])}
               sub={songFilter === "all" && songsWithVocab.length > 1 ? songs[v.songId]?.title : undefined}
               onClick={() => setOpenId(v.id)}
             />

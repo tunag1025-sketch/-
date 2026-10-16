@@ -1,5 +1,6 @@
 "use client";
 
+import type { Memory } from "@/lib/srs";
 import type { VocabItem } from "@/lib/types";
 import { Badge } from "./Badge";
 import { Icon } from "./Icon";
@@ -7,12 +8,12 @@ import { Icon } from "./Icon";
 /** 단어 목록의 한 줄 */
 export function VocabRow({
   item,
-  learned,
+  memory = "none",
   sub,
   onClick,
 }: {
   item: VocabItem;
-  learned?: boolean;
+  memory?: Memory;
   sub?: string;
   onClick: () => void;
 }) {
@@ -32,9 +33,17 @@ export function VocabRow({
           {sub && <div className="font-jp mt-0.5 truncate text-[12px] text-ink-3">{sub}</div>}
         </div>
         <div className="shrink-0">
-          {learned ? (
-            <span className="btn-primary grid size-7 place-items-center" aria-label="외운 단어">
+          {memory === "long" ? (
+            <span className="btn-primary grid size-7 place-items-center" aria-label="장기기억" title="장기기억">
               <Icon name="check" className="size-4" />
+            </span>
+          ) : memory === "short" ? (
+            <span
+              className="grid size-7 place-items-center rounded-full border-2 border-[color:var(--short-term)] text-blue"
+              aria-label="단기기억"
+              title="단기기억"
+            >
+              <Icon name="check" className="size-3.5" />
             </span>
           ) : (
             item.jlpt !== "기타" && <Badge tone="blue">{item.jlpt}</Badge>

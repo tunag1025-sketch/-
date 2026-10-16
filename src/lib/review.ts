@@ -23,7 +23,7 @@ export function remainingNew(dailyNew: number, newLog: Record<string, number>, n
 
 /**
  * 학습할 카드 목록: 기한이 된 카드 먼저(오래된 순), 그다음 새 카드(최근 노래부터).
- * 외운 단어는 넣지 않는다. songId를 주면 그 노래 단어만.
+ * 장기기억 단어는 넣지 않는다. songId를 주면 그 노래 단어만.
  */
 export function buildQueue(
   songs: Record<string, Song>,

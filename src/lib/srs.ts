@@ -4,9 +4,9 @@ const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 const MIN_EASE = 1.3;
 
-/** '완벽'을 연달아 이만큼 고르면 외운 단어로 옮긴다. */
+/** '완벽'을 연달아 이만큼 고르면 장기기억으로 옮긴다. */
 export const LEARNED_PERFECT_STREAK = 3;
-/** 다음 학습이 이만큼(일) 뒤로 밀리면 장기 기억으로 보고 외운 단어로 옮긴다. */
+/** 다음 학습이 이만큼(일) 뒤로 밀리면 장기기억으로 옮긴다. */
 export const LEARNED_INTERVAL_DAYS = 21;
 
 export function newCard(now: number): CardState {
@@ -43,6 +43,7 @@ export function schedule(card: CardState, grade: Grade, now: number): CardState 
   }
 
   next.reps = card.reps + 1;
+  next.correct = (card.correct ?? 0) + 1;
   next.interval = Math.max(1, interval);
   next.due = now + next.interval * DAY;
   if (!next.learned && reachesLearned(next)) {
@@ -56,7 +57,7 @@ function reachesLearned(card: CardState): boolean {
   return (card.perfect ?? 0) >= LEARNED_PERFECT_STREAK || card.interval >= LEARNED_INTERVAL_DAYS;
 }
 
-/** 이 답을 고르면 외운 단어로 넘어가는지 */
+/** 이 답을 고르면 장기기억으로 넘어가는지 */
 export function graduates(card: CardState, grade: Grade, now: number): boolean {
   return !card.learned && !!schedule(card, grade, now).learned;
 }
@@ -76,6 +77,37 @@ export function isDue(card: CardState | undefined, now: number): boolean {
   return !card.learned && card.due <= now;
 }
 
+/** 장기기억인지 */
 export function isLearned(card: CardState | undefined): boolean {
   return card?.learned === true;
+}
+
+/**
+ * 단어의 기억 단계
+ *  long  장기기억: 완벽 3번 연속, 3주 넘게 기억, 또는 직접 옮김
+ *  short 단기기억: 이해·완벽을 한 번이라도 고름
+ *  none  아직
+ */
+export type Memory = "long" | "short" | "none";
+
+export function memoryOf(card: CardState | undefined): Memory {
+  if (!card) return "none";
+  if (card.learned) return "long";
+  // correct가 생기기 전 기록은 연속으로 맞힌 횟수(reps)로 본다.
+  return (card.correct ?? card.reps) > 0 ? "short" : "none";
+}
+
+/** 단어 목록의 진척도: 장기기억 수, 단기기억 수(장기 제외) */
+export function progressOf(
+  vocab: { id: string }[],
+  cards: Record<string, CardState>,
+): { total: number; long: number; short: number } {
+  let long = 0;
+  let short = 0;
+  for (const v of vocab) {
+    const m = memoryOf(cards[v.id]);
+    if (m === "long") long++;
+    else if (m === "short") short++;
+  }
+  return { total: vocab.length, long, short };
 }

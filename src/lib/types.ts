@@ -86,7 +86,9 @@ export type CardState = {
   lastReviewed?: number;
   /** 연달아 '완벽'을 고른 횟수 */
   perfect?: number;
-  /** 외운 단어로 옮긴 카드. 학습 목록에서 빠진다. */
+  /** 이해·완벽을 고른 횟수 (한 번이라도 있으면 단기기억) */
+  correct?: number;
+  /** 장기기억으로 옮긴 카드. 학습 목록에서 빠진다. */
   learned?: boolean;
   learnedAt?: number;
   /** 마지막으로 바뀐 시각 */

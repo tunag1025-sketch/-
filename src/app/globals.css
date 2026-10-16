@@ -28,6 +28,8 @@
   --glass: rgb(255 255 255 / 0.72);
   --glass-edge: rgb(255 255 255 / 0.9);
   --top-glow: #e1edff;
+  /* 진척도 막대의 단기기억 칸 */
+  --short-term: #9dbcff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,6 +57,7 @@
     --glass: rgb(28 32 46 / 0.72);
     --glass-edge: rgb(255 255 255 / 0.08);
     --top-glow: #15213f;
+    --short-term: #3d5a9e;
     color-scheme: dark;
   }
 }

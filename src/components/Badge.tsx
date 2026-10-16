@@ -2,6 +2,7 @@ const TONE = {
   muted: "bg-muted text-ink-2",
   blue: "bg-blue-soft text-blue",
   solid: "bg-blue text-white",
+  short: "bg-[color:var(--short-term)]/30 text-blue",
 } as const;
 
 /** 작은 알약 라벨 */

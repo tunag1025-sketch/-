@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
+import { MemoryBar, MemoryLegend } from "@/components/MemoryBar";
 import { Headline } from "@/components/PageHeader";
 import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
@@ -11,14 +12,21 @@ import { Stat } from "@/components/Stat";
 import { useAccount } from "@/lib/account";
 import { useInFlight } from "@/lib/api-client";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
-import { isLearned } from "@/lib/srs";
+import { progressOf } from "@/lib/srs";
 import { dayKey, greeting, lastDays, streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 import type { CardState, Song } from "@/lib/types";
 import { useAiStatus } from "@/lib/use-ai-status";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-type Filter = "all" | "studying" | "done";
+type Filter = "all" | "studying" | "short" | "long";
+
+/** 노래의 단계: 모든 단어가 장기기억이면 long, 모두 단기기억 이상이면 short */
+function songLevel(p: { total: number; long: number; short: number }): Exclude<Filter, "all"> {
+  if (p.total > 0 && p.long === p.total) return "long";
+  if (p.total > 0 && p.long + p.short === p.total) return "short";
+  return "studying";
+}
 
 export function HomeClient() {
   return (
@@ -50,23 +58,17 @@ function Home() {
     () => order.flatMap((id) => (songs[id]?.status === "ready" ? songs[id].vocab : [])),
     [songs, order],
   );
-  const learned = allVocab.filter((v) => isLearned(cards[v.id])).length;
+  const memory = progressOf(allVocab, cards);
   const week = lastDays(reviewLog, now, 7);
   const days = streak(reviewLog, now);
   const weekTotal = week.reduce((n, d) => n + d.count, 0);
 
-  const progress = (song: Song) => {
-    const total = song.vocab.length;
-    const done = song.vocab.filter((v) => isLearned(cards[v.id])).length;
-    return { total, done };
-  };
   const visible = order.filter((id) => {
     const song = songs[id];
     if (!song) return false;
     if (filter === "all") return true;
-    const { total, done } = progress(song);
-    const finished = song.status === "ready" && total > 0 && done === total;
-    return filter === "done" ? finished : !finished;
+    const level = song.status === "ready" ? songLevel(progressOf(song.vocab, cards)) : "studying";
+    return level === filter;
   });
 
   return (
@@ -175,11 +177,18 @@ function Home() {
           </Link>
         </div>
         <div className="card px-5 pt-5 pb-4">
-          <div className="grid grid-cols-3">
-            <Stat className="text-[32px]" value={weekTotal} label="이번 주 학습" />
-            <Stat className="text-[32px]" value={learned} label="외운 단어" />
-            <Stat className="text-[32px]" value={allVocab.length} label="모은 단어" />
+          <div className="grid grid-cols-4">
+            <Stat className="text-[28px]" value={weekTotal} label="이번 주 학습" />
+            <Stat className="text-[28px]" value={memory.short} label="단기기억" />
+            <Stat className="text-[28px]" value={memory.long} label="장기기억" />
+            <Stat className="text-[28px]" value={allVocab.length} label="모은 단어" />
           </div>
+          {allVocab.length > 0 && (
+            <div className="mt-4">
+              <MemoryBar total={memory.total} long={memory.long} short={memory.short} className="h-2" />
+              <MemoryLegend className="mt-2 justify-end" />
+            </div>
+          )}
           <ol className="mt-5 flex justify-between border-t border-line pt-4" aria-label="최근 7일 학습 기록">
             {week.map((d, i) => {
               const date = new Date(d.ts);
@@ -212,20 +221,22 @@ function Home() {
           <h2 className="text-[19px] font-semibold">
             내 노래 <span className="num text-[15px] font-medium text-ink-3">{order.length}</span>
           </h2>
+          {order.length > 0 && <MemoryLegend />}
         </div>
         {order.length > 0 && (
-          <div className="mb-3 flex gap-2">
+          <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
             {(
               [
                 ["all", "전체"],
                 ["studying", "공부 중"],
-                ["done", "다 외움"],
+                ["short", "단기기억"],
+                ["long", "장기기억"],
               ] as const
             ).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
-                className="chip press"
+                className="chip press shrink-0"
                 aria-pressed={filter === key}
                 onClick={() => setFilter(key)}
               >
@@ -242,7 +253,11 @@ function Home() {
           </div>
         ) : visible.length === 0 ? (
           <p className="py-8 text-center text-[14px] text-ink-3">
-            {filter === "done" ? "아직 다 외운 노래가 없어요." : "공부 중인 노래가 없어요."}
+            {filter === "long"
+              ? "아직 모든 단어가 장기기억인 노래가 없어요."
+              : filter === "short"
+                ? "아직 모든 단어를 한 번씩 맞힌 노래가 없어요."
+                : "공부 중인 노래가 없어요."}
           </p>
         ) : (
           <ul className="space-y-2.5">
@@ -259,8 +274,7 @@ function Home() {
 
 function SongRow({ song, cards }: { song: Song; cards: Record<string, CardState> }) {
   const inFlight = useInFlight((s) => s.ids.has(song.id));
-  const total = song.vocab.length;
-  const done = song.vocab.filter((v) => isLearned(cards[v.id])).length;
+  const { total, long, short } = progressOf(song.vocab, cards);
   return (
     <li>
       <Link href={`/songs/${song.id}`} className="card press flex items-center gap-3.5 p-3">
@@ -272,11 +286,9 @@ function SongRow({ song, cards }: { song: Song; cards: Record<string, CardState>
           </div>
           {song.status === "ready" && total > 0 && (
             <div className="mt-2 flex items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-[image:var(--grad-text)]" style={{ width: `${(done / total) * 100}%` }} />
-              </div>
+              <MemoryBar total={total} long={long} short={short} className="h-1.5 flex-1" />
               <span className="num text-[12px] font-semibold text-ink-3">
-                {done}/{total}
+                {long + short}/{total}
               </span>
             </div>
           )}
