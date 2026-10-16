@@ -1,0 +1,66 @@
+# Utango · 노래로 배우는 일본어
+
+좋아하는 일본 노래의 가사를 붙여넣으면 AI가 **나만의 단어장과 예문**을 만들어 주는 일본어 공부 앱이에요.
+웹으로 쓸 수 있고, 휴대폰에서는 홈 화면에 추가해서 앱처럼 쓸 수 있어요(PWA).
+
+## 기능
+
+- **후리가나 가사**: 붙여넣은 가사를 형태소 분석(kuromoji)해서 한자 위에 읽기를 달아 줘요. 켜고 끌 수 있어요.
+- **AI 단어장**: 내 수준(입문·N5~N1)에 맞춰 노래에서 공부할 단어를 골라 뜻, 품사, JLPT 레벨, 노래 속 뉘앙스를 정리해요.
+- **예문**: 단어마다 노래와 같은 의미로 쓰인 예문 2개와 한국어 번역(후리가나 포함)을 만들어요.
+- **문법 포인트**: 노래에 나온 문법 패턴 3~6개를 해당 가사 줄과 함께 설명해요.
+- **한 줄 해설**: 가사 줄 옆 ✦ 를 누르면 그 줄의 해석과 끊어 읽기를 보여줘요.
+- **복습 카드**: 간격 반복(SM-2 방식)으로 복습 시점을 잡아요. 카드 앞면에 그 단어가 나온 **가사 한 줄**이 같이 나와요.
+- **데모곡**: 처음 열면 이 앱용으로 새로 쓴 데모곡이 들어 있어서 API 키 없이도 모든 화면을 둘러볼 수 있어요.
+
+가사와 학습 기록은 **사용하는 기기의 브라우저에만 저장**돼요(로그인 없음). 가사는 단어장을 만들 때만 서버를 거쳐 AI에 보내져요.
+
+## 로컬에서 실행
+
+```bash
+npm install
+cp .env.example .env.local   # ANTHROPIC_API_KEY 입력
+npm run dev                  # http://localhost:3000
+```
+
+| 명령 | 설명 |
+|---|---|
+| `npm run dev` | 개발 서버 |
+| `npm run build` / `npm start` | 프로덕션 빌드 / 실행 |
+| `npm test` | 단위 테스트 (vitest) |
+| `npm run lint` | ESLint |
+| `npm run demo` | `scripts/demo-source.ts`를 고친 뒤 데모곡 데이터 다시 생성 |
+
+## 배포 (Vercel 추천)
+
+1. [vercel.com](https://vercel.com)에서 GitHub로 로그인 → **Add New → Project** → 이 레포 선택
+2. **Environment Variables**에 `ANTHROPIC_API_KEY` 추가 (키는 [console.anthropic.com](https://console.anthropic.com)에서 발급)
+3. **Deploy** → 나온 주소를 휴대폰에서 열고 공유 메뉴의 **홈 화면에 추가**
+
+## 환경 변수
+
+| 이름 | 필수 | 설명 |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | ✅ | Claude API 키. 없으면 후리가나 가사와 데모곡만 동작해요. |
+| `CLAUDE_MODEL` | | 기본값 `claude-opus-5-5`. 비용을 줄이려면 `claude-sonnet-5-5`나 `claude-haiku-5-5`로 바꿀 수 있어요. |
+
+## 구조
+
+```
+src/app/                  화면 (홈, 노래 추가, 노래 상세, 복습, 단어장) + API 라우트
+  api/tokenize            가사 → 형태소 + 후리가나 (kuromoji)
+  api/analyze             가사 → AI 단어장·예문·문법 (Claude, structured output)
+  api/explain             가사 한 줄 해설 (Claude)
+src/lib/
+  furigana.ts             표기와 읽기를 맞춰 한자 부분에만 루비 달기
+  analysis/               AI 프롬프트, 응답 스키마(zod), 결과 정리
+  srs.ts / review.ts      간격 반복 스케줄링, 복습 목록
+  store.ts                기기 저장소(zustand + localStorage)
+public/sw.js              오프라인 캐시용 서비스 워커
+```
+
+## 가사 저작권
+
+노래 가사는 대부분 저작권이 있어요. 이 앱은 사용자가 직접 붙여넣은 가사를 그 사용자의 기기에만 저장하고,
+AI에는 가사를 다시 출력하지 말고 줄 번호로만 가리키도록 지시해요(예문은 새로 지어냄).
+여러 사람에게 서비스하거나 유료로 낼 때는 가사 제공 방식(라이선스가 있는 가사 API 등)을 따로 검토해야 해요.

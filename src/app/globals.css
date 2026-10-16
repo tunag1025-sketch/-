@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #faf6f1;
+  --surface: #ffffff;
+  --surface-2: #f3ede6;
+  --ink: #221d18;
+  --ink-2: #5e554c;
+  --ink-3: #958a7e;
+  --line: #e8e0d6;
+  --accent: #e2495a;
+  --accent-ink: #ffffff;
+  --accent-soft: #fde6e8;
+  --mark: #fff1c2;
+  --good: #2f8f5b;
+  --good-soft: #e1f2e8;
+  --hard: #c27a12;
+  --hard-soft: #f8ecd8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15120f;
+    --surface: #1f1b17;
+    --surface-2: #2a251f;
+    --ink: #f3ece4;
+    --ink-2: #c3b8ab;
+    --ink-3: #8a7f73;
+    --line: #342e27;
+    --accent: #ff6b7a;
+    --accent-ink: #1b0b0d;
+    --accent-soft: #3a1d21;
+    --mark: #4a3d12;
+    --good: #5cc28a;
+    --good-soft: #1c3326;
+    --hard: #e3a440;
+    --hard-soft: #3a2d17;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-mark: var(--mark);
+  --color-good: var(--good);
+  --color-hard: var(--hard);
+  --color-good-soft: var(--good-soft);
+  --color-hard-soft: var(--hard-soft);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Noto Sans KR", "Noto Sans JP", "Malgun Gothic", "Yu Gothic", sans-serif;
+  --font-jp: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", -apple-system,
+    sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.font-jp {
+  font-family: var(--font-jp);
+}
+
+ruby {
+  ruby-position: over;
+}
+
+rt {
+  font-size: 0.5em;
+  color: var(--ink-3);
+  font-weight: 400;
+  letter-spacing: 0;
+  user-select: none;
+}
+
+.hide-ruby rt {
+  visibility: hidden;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility input {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 0.75rem 1rem;
+  font-size: 16px;
+  outline: none;
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  &::placeholder {
+    color: var(--ink-3);
+  }
+}
