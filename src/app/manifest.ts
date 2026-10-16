@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "좋아하는 노래로 만드는 나만의 일본어 단어장",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffd3ee",
-    theme_color: "#ffd3ee",
+    background_color: "#f4f5f9",
+    theme_color: "#f4f5f9",
     lang: "ko",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },

@@ -8,9 +8,9 @@ export function HydrationGate({ children }: { children: React.ReactNode }) {
   if (!hydrated) {
     return (
       <div className="space-y-4 pt-8" aria-busy>
-        <div className="h-9 w-44 animate-pulse rounded-2xl bg-white/50" />
-        <div className="h-28 animate-pulse rounded-3xl bg-white/50" />
-        <div className="h-20 animate-pulse rounded-3xl bg-white/50" />
+        <div className="h-16 w-2/3 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-14 animate-pulse rounded-full bg-muted" />
+        <div className="h-40 animate-pulse rounded-[28px] bg-muted" />
       </div>
     );
   }

@@ -52,3 +52,8 @@ export function isDue(card: CardState | undefined, now: number): boolean {
   if (!card) return true;
   return !card.suspended && card.due <= now;
 }
+
+/** 외운 단어: 직접 뺐거나, 연달아 두 번 이상 맞힌 카드 */
+export function isLearned(card: CardState | undefined): boolean {
+  return !!card && (card.suspended === true || card.reps >= 2);
+}

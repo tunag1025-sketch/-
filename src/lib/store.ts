@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { newCard, schedule } from "./srs";
+import { dayKey } from "./stats";
 import type { CardState, Grade, Level, LineExplanation, Song } from "./types";
 
 type Settings = {
@@ -16,6 +17,8 @@ type State = {
   order: string[];
   cards: Record<string, CardState>;
   explanations: Record<string, LineExplanation>;
+  /** 날짜(YYYY-MM-DD)별로 답한 카드 수 */
+  reviewLog: Record<string, number>;
   settings: Settings;
   seededDemo: boolean;
 
@@ -40,6 +43,7 @@ export const useStore = create<State>()(
       order: [],
       cards: {},
       explanations: {},
+      reviewLog: {},
       settings: { furigana: true, defaultLevel: "N4" },
       seededDemo: false,
 
@@ -77,7 +81,11 @@ export const useStore = create<State>()(
       grade: (vocabId, grade) =>
         set((s) => {
           const now = Date.now();
-          return { cards: { ...s.cards, [vocabId]: schedule(s.cards[vocabId] ?? newCard(now), grade, now) } };
+          const day = dayKey(now);
+          return {
+            cards: { ...s.cards, [vocabId]: schedule(s.cards[vocabId] ?? newCard(now), grade, now) },
+            reviewLog: { ...s.reviewLog, [day]: (s.reviewLog[day] ?? 0) + 1 },
+          };
         }),
 
       setSuspended: (vocabId, suspended) =>

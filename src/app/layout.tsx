@@ -3,10 +3,7 @@ import { Suspense } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { Providers } from "@/components/Providers";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
-import "@fontsource/dela-gothic-one";
-import "@fontsource/dotgothic16";
-import "@fontsource/space-mono/400.css";
-import "@fontsource/space-mono/700.css";
+import "@fontsource-variable/outfit";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,8 +22,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffd3ee" },
-    { media: "(prefers-color-scheme: dark)", color: "#33112f" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f5f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e0e12" },
   ],
 };
 

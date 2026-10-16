@@ -1,40 +1,57 @@
 import Link from "next/link";
 import { Icon, type IconName } from "./Icon";
 
-/** 화면 제목: [ 영문 라벨 ] + 큰 한글 제목. backHref를 주면 뒤로 버튼이 붙는다. */
-export function PageHeader({
-  label,
-  title,
-  backHref,
-  right,
-}: {
-  label: string;
-  title: string;
-  backHref?: string;
-  right?: React.ReactNode;
-}) {
+/** 탭 화면 제목 */
+export function PageTitle({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
-    <header className="flex items-end justify-between gap-3 pt-5 pb-1">
-      <div className="flex items-end gap-3">
-        {backHref && <BackButton href={backHref} />}
-        <div>
-          <p className="font-mono text-[11px] font-bold tracking-wider text-pink-text">[ {label} ]</p>
-          <h1 className="font-display text-[28px] leading-tight">{title}</h1>
-        </div>
+    <header className="flex items-end justify-between gap-3 pt-6">
+      <div className="min-w-0">
+        {sub && <p className="text-[15px] font-medium text-ink-3">{sub}</p>}
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.03em]">{title}</h1>
       </div>
       {right}
     </header>
   );
 }
 
-export function BackButton({ href, label = "뒤로", icon = "back" }: { href: string; label?: string; icon?: IconName }) {
+/** 하위 화면 위쪽 막대: 뒤로 + 가운데 제목 + 오른쪽 버튼들 */
+export function TopBar({ backHref, title, right }: { backHref: string; title?: string; right?: React.ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="sticker-sm press grid size-10 shrink-0 place-items-center rounded-full bg-surface"
-      aria-label={label}
-    >
+    <header className="grid h-16 grid-cols-[auto_1fr_auto] items-center gap-3">
+      <CircleLink href={backHref} icon="back" label="뒤로" />
+      <span className="truncate text-center text-[15px] font-semibold">{title}</span>
+      <div className="flex items-center gap-2">{right}</div>
+    </header>
+  );
+}
+
+export function CircleLink({ href, icon, label }: { href: string; icon: IconName; label: string }) {
+  return (
+    <Link href={href} aria-label={label} className="press grid size-11 place-items-center rounded-full bg-surface">
       <Icon name={icon} />
     </Link>
+  );
+}
+
+export function CircleButton({
+  icon,
+  label,
+  onClick,
+  active = false,
+}: {
+  icon: IconName;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`press grid size-11 place-items-center rounded-full ${active ? "bg-blue text-on-blue" : "bg-surface"}`}
+    >
+      <Icon name={icon} className="size-[19px]" />
+    </button>
   );
 }

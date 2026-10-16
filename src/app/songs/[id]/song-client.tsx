@@ -5,17 +5,16 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
-import { Icon } from "@/components/Icon";
+import { ArrowDot, Icon } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
-import { BackButton } from "@/components/PageHeader";
+import { CircleButton, TopBar } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { Spinner } from "@/components/Spinner";
-import { Heart, Sparkle } from "@/components/Stickers";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
 import { startAnalysis, useInFlight } from "@/lib/api-client";
+import { isLearned } from "@/lib/srs";
 import { useStore } from "@/lib/store";
-import { toneFor } from "@/lib/tone";
 import type { Song } from "@/lib/types";
 import { LineExplain } from "./line-explain";
 
@@ -35,9 +34,9 @@ function SongScreen({ id }: { id: string }) {
   if (!song) {
     return (
       <div className="pt-24 text-center">
-        <p className="font-display text-2xl">404</p>
-        <p className="mt-1 font-semibold">노래를 찾을 수 없어요</p>
-        <Link href="/" className="mt-4 inline-block rounded-full border-2 border-edge px-4 py-2 text-sm font-bold">
+        <p className="text-[18px] font-bold">노래를 찾을 수 없어요</p>
+        <p className="mt-1 text-[14px] text-ink-3">삭제됐거나 다른 기기에서 추가한 노래예요.</p>
+        <Link href="/" className="press mt-5 inline-block rounded-full bg-solid px-5 py-3 text-[14px] font-semibold text-on-solid">
           홈으로
         </Link>
       </div>
@@ -55,73 +54,59 @@ function SongView({ song }: { song: Song }) {
   const [tab, setTab] = useState<Tab>("lyrics");
   const [openWord, setOpenWord] = useState<string | null>(null);
   const [openLine, setOpenLine] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const word = openWord ? song.vocab.find((v) => v.id === openWord) : undefined;
-
-  function remove() {
-    if (!confirm(`'${song.title}'을(를) 삭제할까요? 이 노래의 단어 복습 기록도 함께 지워져요.`)) return;
-    removeSong(song.id);
-    router.replace("/");
-  }
+  const learned = song.vocab.filter((v) => isLearned(cards[v.id])).length;
+  const total = song.vocab.length;
 
   return (
-    <div className="pt-4">
-      <header className="flex items-center justify-between">
-        <BackButton href="/" />
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSettings({ furigana: !furigana })}
-            className={`sticker-sm press font-pixel rounded-full px-3.5 py-1.5 text-[15px] ${
-              furigana ? "bg-lemon text-black" : "bg-surface text-ink-3"
-            }`}
-            aria-pressed={furigana}
-          >
-            ふりがな {furigana ? "ON" : "OFF"}
-          </button>
-          <button
-            onClick={remove}
-            className="sticker-sm press grid size-10 place-items-center rounded-full bg-surface text-ink-2"
-            aria-label="노래 삭제"
-          >
-            <Icon name="trash" className="size-[18px]" />
-          </button>
-        </div>
-      </header>
+    <div>
+      <TopBar
+        backHref="/"
+        right={
+          <>
+            <button
+              type="button"
+              onClick={() => setSettings({ furigana: !furigana })}
+              aria-pressed={furigana}
+              className={`press font-jp h-11 rounded-full px-4 text-[14px] font-semibold ${
+                furigana ? "bg-lime text-on-lime" : "bg-surface text-ink-3"
+              }`}
+            >
+              ふりがな
+            </button>
+            <CircleButton icon="trash" label="노래 삭제" onClick={() => setConfirmDelete(true)} />
+          </>
+        }
+      />
 
-      <section className={`sticker relative mt-4 overflow-hidden px-5 pt-4 pb-5 text-black ${toneFor(song.id)}`}>
-        <div className="dots absolute inset-0" />
-        <div className="relative">
-          <p className="font-mono text-[11px] font-bold tracking-wider">[ NOW STUDYING ]</p>
-          <h1 className="font-display mt-2 pr-10 text-[27px] leading-[1.25]">{song.title}</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full border-[1.5px] border-black bg-white px-2 py-px font-mono text-[11px] font-bold">
-              {song.artist || "unknown artist"}
-            </span>
-            <Badge tone="black" pixel>
-              {song.level}
-            </Badge>
-            {song.isDemo && (
-              <Badge tone="pink" pixel className="-rotate-6">
-                DEMO
-              </Badge>
-            )}
-          </div>
+      <section className="mt-2">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge tone="lime">{song.level}</Badge>
+          {song.isDemo && <Badge tone="lav">데모곡</Badge>}
         </div>
-        <Sparkle className="absolute top-3 right-4 w-7" color="#ffffff" />
-        <Heart className="absolute right-12 bottom-3 w-6 -rotate-12" />
+        <h1 className="font-jp mt-3 text-[28px] leading-[1.3] font-bold">{song.title}</h1>
+        <p className="mt-1 text-[15px] text-ink-3">{song.artist || "아티스트 미상"}</p>
+        {song.summary && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{song.summary}</p>}
       </section>
 
-      {song.summary && <p className="mt-4 px-1 text-[15px] leading-relaxed text-ink-2">{song.summary}</p>}
+      {song.status === "ready" && total > 0 && (
+        <div className="mt-5 grid grid-cols-3 gap-2.5">
+          <Stat label="단어" value={total} />
+          <Stat label="문법" value={song.grammar.length} />
+          <Stat label="외운 단어" value={learned} suffix={`/${total}`} />
+        </div>
+      )}
 
       <AnalysisStatus song={song} />
 
-      <div className="sticky top-0 z-20 -mx-4 mt-5 mb-4 px-4 py-2.5 backdrop-blur-md">
-        <div className="flex gap-1 rounded-full border-2 border-edge bg-surface p-1" role="tablist">
+      <div className="sticky top-0 z-20 -mx-4 mt-6 mb-3 bg-bg/90 px-4 py-2 backdrop-blur-md">
+        <div className="flex gap-2" role="tablist">
           {(
             [
               ["lyrics", "가사", null],
-              ["vocab", "단어", song.vocab.length],
+              ["vocab", "단어", total],
               ["grammar", "문법", song.grammar.length],
             ] as const
           ).map(([key, label, count]) => (
@@ -130,22 +115,22 @@ function SongView({ song }: { song: Song }) {
               role="tab"
               aria-selected={tab === key}
               onClick={() => setTab(key)}
-              className={`flex flex-1 items-center justify-center gap-1 rounded-full py-2 text-[14px] font-bold transition-colors ${
-                tab === key ? "bg-ink text-bg" : "text-ink-3"
+              className={`press flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[14px] font-semibold transition-colors ${
+                tab === key ? "bg-lime text-on-lime" : "bg-surface text-ink-2"
               }`}
             >
               {label}
-              {count ? <span className="font-pixel text-[13px] opacity-80">{count}</span> : null}
+              {count ? <span className="num text-[13px] opacity-60">{count}</span> : null}
             </button>
           ))}
         </div>
       </div>
 
       {tab === "lyrics" && (
-        <div className="sticker px-4 py-4">
-          {song.status === "ready" && song.vocab.length > 0 && (
-            <p className="mb-3 rounded-xl bg-surface-2 px-3 py-2 text-xs leading-relaxed text-ink-2">
-              <span className="vocab-word font-bold">형광펜 단어</span>를 누르면 뜻과 예문이, ✦ 를 누르면 그 줄 해설이 나와요.
+        <div className="rounded-[28px] bg-surface px-4 pt-3 pb-4">
+          {song.status === "ready" && total > 0 && (
+            <p className="mb-2 text-[13px] leading-relaxed text-ink-3">
+              색칠된 단어를 누르면 뜻과 예문을, 줄 끝 버튼을 누르면 그 줄 해설을 볼 수 있어요.
             </p>
           )}
           {song.lines.map((line, i) =>
@@ -158,10 +143,11 @@ function SongView({ song }: { song: Song }) {
                   <button
                     type="button"
                     onClick={() => setOpenLine(openLine === i ? null : i)}
-                    className={`mt-3 grid size-8 shrink-0 place-items-center rounded-full border-2 ${
-                      openLine === i ? "border-black bg-pink text-black" : "border-line text-ink-3"
+                    className={`press mt-3 grid size-8 shrink-0 place-items-center rounded-full ${
+                      openLine === i ? "bg-blue text-on-blue" : "bg-muted text-ink-3"
                     }`}
                     aria-label="이 줄 해설 보기"
+                    aria-expanded={openLine === i}
                   >
                     <Icon name="sparkle" className="size-4" />
                   </button>
@@ -176,8 +162,8 @@ function SongView({ song }: { song: Song }) {
       )}
 
       {tab === "vocab" && (
-        <ul className="sticker divide-y divide-line overflow-hidden">
-          {song.vocab.length === 0 && <EmptyAnalysis song={song} />}
+        <ul className="divide-y divide-line overflow-hidden rounded-[28px] bg-surface">
+          {total === 0 && <EmptyAnalysis song={song} />}
           {song.vocab.map((v) => (
             <VocabRow key={v.id} item={v} suspended={cards[v.id]?.suspended} onClick={() => setOpenWord(v.id)} />
           ))}
@@ -185,22 +171,19 @@ function SongView({ song }: { song: Song }) {
       )}
 
       {tab === "grammar" && (
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {song.grammar.length === 0 && (
-            <li className="sticker">
+            <li className="rounded-[28px] bg-surface">
               <EmptyAnalysis song={song} />
             </li>
           )}
           {song.grammar.map((g, i) => (
-            <li key={i} className="sticker px-4 py-4">
-              <div className="flex items-baseline gap-2">
-                <span className="font-pixel text-[13px] text-ink-3">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-display text-[20px] text-pink-text">{g.pattern}</span>
-                <span className="text-[15px] font-extrabold">{g.meaning}</span>
-              </div>
-              <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{g.explanation}</p>
+            <li key={i} className="rounded-[28px] bg-surface px-5 py-4">
+              <p className="font-jp text-[20px] font-bold text-blue">{g.pattern}</p>
+              <p className="mt-0.5 text-[15px] font-semibold">{g.meaning}</p>
+              <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{g.explanation}</p>
               {song.lines[g.line] && (
-                <p className="mt-3 rounded-2xl border-2 border-edge bg-lemon/50 px-3 py-2 text-[16px] leading-[2.1] dark:bg-lemon/15">
+                <p className="mt-3 rounded-2xl bg-muted px-3.5 py-2 text-[16px] leading-[2.1]">
                   <LyricLineView line={song.lines[g.line]} index={g.line} vocab={[]} furigana={furigana} />
                 </p>
               )}
@@ -209,18 +192,57 @@ function SongView({ song }: { song: Song }) {
         </ul>
       )}
 
-      {song.status === "ready" && song.vocab.length > 0 && (
+      {song.status === "ready" && total > 0 && (
         <Link
           href={`/review?song=${song.id}`}
-          className="sticker-sm press mt-8 flex items-center justify-center gap-2 rounded-full bg-black px-4 py-4 font-bold text-white"
+          className="press mt-6 flex items-center justify-between rounded-full bg-solid py-2 pr-2 pl-6 text-[16px] font-semibold text-on-solid"
         >
-          <Icon name="cards" /> 이 노래 단어 복습하기
+          이 노래 단어 복습하기
+          <ArrowDot />
         </Link>
       )}
 
       <Sheet open={!!word} onClose={() => setOpenWord(null)} title={song.title}>
         {word && <VocabDetail item={word} song={song} />}
       </Sheet>
+
+      <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="노래 삭제">
+        <p className="font-jp text-[20px] font-bold">{song.title}</p>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
+          이 노래와 단어장, 복습 기록이 모두 지워져요. 되돌릴 수 없어요.
+        </p>
+        <div className="mt-6 grid grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(false)}
+            className="press rounded-full bg-muted py-3.5 text-[15px] font-semibold"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              removeSong(song.id);
+              router.replace("/");
+            }}
+            className="press rounded-full bg-danger py-3.5 text-[15px] font-semibold text-white"
+          >
+            삭제
+          </button>
+        </div>
+      </Sheet>
+    </div>
+  );
+}
+
+function Stat({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
+  return (
+    <div className="rounded-[22px] bg-surface px-3.5 py-3">
+      <p className="num text-[24px] leading-none font-semibold">
+        {value}
+        {suffix && <span className="text-[14px] font-medium text-ink-3">{suffix}</span>}
+      </p>
+      <p className="mt-1.5 text-[12px] font-medium text-ink-3">{label}</p>
     </div>
   );
 }
@@ -231,28 +253,28 @@ function AnalysisStatus({ song }: { song: Song }) {
 
   if (song.status === "analyzing" && inFlight) {
     return (
-      <div className="sticker mt-4 flex items-center gap-3 bg-lav px-4 py-3.5 text-sm text-black">
+      <div className="mt-5 flex items-center gap-3 rounded-[24px] bg-lav px-4 py-4 text-on-lav">
         <Spinner className="size-5 shrink-0" />
-        <div>
-          <p className="font-bold">AI가 단어장과 예문을 만들고 있어요</p>
-          <p className="opacity-75">1~2분 정도 걸려요. 그동안 후리가나 가사를 먼저 읽어 보세요.</p>
+        <div className="text-[14px]">
+          <p className="font-semibold">AI가 단어장과 예문을 만들고 있어요</p>
+          <p className="opacity-75">1~2분 걸려요. 그동안 가사를 먼저 읽어 보세요.</p>
         </div>
       </div>
     );
   }
 
   const message =
-    song.status === "error" ? song.error : "단어장 만들기가 중간에 멈췄어요 (앱을 닫았거나 새로고침했어요).";
+    song.status === "error" ? song.error : "단어장 만들기가 중간에 멈췄어요. 앱을 닫거나 새로고침하면 멈춰요.";
   return (
-    <div className="sticker mt-4 px-4 py-3.5 text-sm">
-      <p className="text-ink-2">
-        <span className="font-pixel mr-1 text-pink-text">(!)</span>
+    <div className="mt-5 rounded-[24px] bg-surface px-4 py-4">
+      <p className="flex gap-2 text-[14px] leading-relaxed text-ink-2">
+        <Icon name="info" className="mt-0.5 size-[18px] shrink-0 text-danger" />
         {message}
       </p>
       <button
         type="button"
         onClick={() => startAnalysis(song.id, { retokenize: true })}
-        className="sticker-sm press mt-3 flex items-center gap-1.5 rounded-full bg-pink px-3.5 py-2 font-bold text-black"
+        className="press mt-3 flex items-center gap-1.5 rounded-full bg-solid px-4 py-2.5 text-[14px] font-semibold text-on-solid"
       >
         <Icon name="refresh" className="size-4" /> 단어장 다시 만들기
       </button>
@@ -262,7 +284,7 @@ function AnalysisStatus({ song }: { song: Song }) {
 
 function EmptyAnalysis({ song }: { song: Song }) {
   return (
-    <p className="px-4 py-8 text-center text-sm text-ink-3">
+    <p className="px-4 py-10 text-center text-[14px] text-ink-3">
       {song.status === "analyzing" ? "단어장을 만드는 중이에요…" : "아직 단어장이 없어요."}
     </p>
   );

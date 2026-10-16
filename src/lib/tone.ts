@@ -1,5 +1,5 @@
-/** 노래마다 고정된 파스텔 블록 색. 위에는 항상 검정 글씨를 쓴다. */
-const TONES = ["bg-candy", "bg-sky", "bg-lemon", "bg-lav", "bg-peri"] as const;
+/** 노래마다 고정된 커버 색 (배경 + 그 위 글자색) */
+const TONES = ["bg-blue text-on-blue", "bg-lime text-on-lime", "bg-lav text-on-lav", "bg-solid text-on-solid"] as const;
 
 export function toneFor(id: string): (typeof TONES)[number] {
   let h = 0;

@@ -3,22 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
-import { Icon } from "@/components/Icon";
-import { PageHeader } from "@/components/PageHeader";
+import { ArrowDot } from "@/components/Icon";
+import { TopBar } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
-import { Sparkle } from "@/components/Stickers";
 import { startAnalysis, tokenize } from "@/lib/api-client";
 import { cleanLyrics } from "@/lib/lyrics";
 import { useStore } from "@/lib/store";
 import { LEVELS, type Level } from "@/lib/types";
 
 const LEVEL_HINT: Record<Level, string> = {
-  입문: "히라가나만",
-  N5: "아주 기초",
-  N4: "기초",
-  N3: "중급",
-  N2: "중상급",
-  N1: "상급",
+  입문: "히라가나·가타카나를 읽을 수 있어요",
+  N5: "아주 기초적인 단어와 문장을 알아요",
+  N4: "기초 문법과 일상 단어를 알아요",
+  N3: "일상 대화는 대체로 알아들어요",
+  N2: "뉴스나 긴 글도 꽤 읽을 수 있어요",
+  N1: "웬만한 글은 다 읽을 수 있어요",
 };
 
 export function NewSongClient() {
@@ -50,8 +49,7 @@ function NewSongForm() {
     e.preventDefault();
     const text = htmlToPlainLyrics(html);
     const el = e.currentTarget;
-    const next = el.value.slice(0, el.selectionStart) + text + el.value.slice(el.selectionEnd);
-    setLyrics(next);
+    setLyrics(el.value.slice(0, el.selectionStart) + text + el.value.slice(el.selectionEnd));
   }
 
   async function submit(e: React.FormEvent) {
@@ -77,12 +75,20 @@ function NewSongForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-7">
-      <PageHeader label="ADD SONG" title="노래 추가" backHref="/" />
+    <form onSubmit={submit} className="space-y-6">
+      <TopBar backHref="/" title="노래 추가" />
 
-      <div className="sticker space-y-4 p-4">
-        <Field en="01 · TITLE" ko="노래 제목">
+      <div>
+        <h1 className="text-[26px] leading-tight font-bold tracking-[-0.03em]">어떤 노래로 공부할까요?</h1>
+        <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">
+          가사를 붙여넣으면 내 수준에 맞는 단어장과 예문을 만들어 드려요.
+        </p>
+      </div>
+
+      <div className="space-y-4 rounded-[28px] bg-surface p-4">
+        <Field label="노래 제목" htmlFor="title">
           <input
+            id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="예: 夜に駆ける"
@@ -91,8 +97,9 @@ function NewSongForm() {
             required
           />
         </Field>
-        <Field en="02 · ARTIST" ko="가수 (선택)">
+        <Field label="가수" hint="선택" htmlFor="artist">
           <input
+            id="artist"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
             placeholder="예: YOASOBI"
@@ -102,60 +109,55 @@ function NewSongForm() {
         </Field>
       </div>
 
-      <Field en="03 · LEVEL" ko="내 일본어 수준">
-        <div className="grid grid-cols-3 gap-2.5">
+      <fieldset>
+        <legend className="mb-2.5 text-[15px] font-semibold">내 일본어 수준</legend>
+        <div className="flex flex-wrap gap-2">
           {LEVELS.map((l) => (
             <button
               key={l}
               type="button"
               onClick={() => setLevel(l)}
               aria-pressed={level === l}
-              className={`sticker-sm press rounded-2xl px-2 py-2.5 text-center ${
-                level === l ? "bg-pink text-black" : "bg-surface text-ink-2"
+              className={`press num rounded-full px-4 py-2.5 text-[15px] font-semibold ${
+                level === l ? "bg-lime text-on-lime" : "bg-surface text-ink-2"
               }`}
             >
-              <div className="font-pixel text-[19px] leading-tight font-bold">{l}</div>
-              <div className="text-[11px] font-semibold opacity-80">{LEVEL_HINT[l]}</div>
+              {l}
             </button>
           ))}
         </div>
-      </Field>
+        <p className="mt-2 text-[13px] text-ink-3">{LEVEL_HINT[level]}</p>
+      </fieldset>
 
-      <Field en="04 · LYRICS" ko="가사" hint={lineCount ? `${lineCount} lines` : undefined}>
+      <Field label="가사" hint={lineCount ? `${lineCount}줄` : undefined} htmlFor="lyrics">
         <textarea
+          id="lyrics"
           value={lyrics}
           onChange={(e) => setLyrics(e.target.value)}
           onPaste={onPaste}
           placeholder={"가사를 그대로 붙여넣어 주세요.\n\n例)\n夜明け前の空に 小さな星がひとつ\n眠れない僕は 窓を開けて君を思う"}
           rows={12}
-          className="font-jp input min-h-[16rem] resize-y text-[16px] leading-relaxed"
+          className="font-jp input min-h-[16rem] resize-y bg-surface text-[16px] leading-relaxed"
           required
         />
-        <p className="mt-2 text-xs text-ink-3">가사는 이 기기에만 저장돼요. 단어장을 만들 때만 AI에 보내져요.</p>
+        <p className="mt-2 text-[13px] text-ink-3">가사는 이 기기에만 저장되고, 단어장을 만들 때만 AI에 보내져요.</p>
       </Field>
 
-      {error && (
-        <p className="rounded-2xl border-2 border-edge bg-candy px-4 py-3 text-sm font-semibold text-black">
-          <span className="font-pixel mr-1">(!)</span>
-          {error}
-        </p>
-      )}
+      {error && <p className="rounded-2xl bg-danger-soft px-4 py-3 text-[14px] font-medium text-danger">{error}</p>}
 
       <button
         type="submit"
         disabled={!canSubmit}
-        className="sticker-sm press relative flex w-full items-center justify-center gap-2 rounded-full bg-pink px-4 py-4 text-[17px] font-extrabold text-black shadow-ink disabled:opacity-40"
+        className="press flex w-full items-center justify-between gap-2 rounded-full bg-solid py-2 pr-2 pl-6 text-[16px] font-semibold text-on-solid disabled:opacity-35"
       >
         {busy ? (
-          <>
+          <span className="flex items-center gap-2">
             <Spinner /> 가사 읽는 중…
-          </>
+          </span>
         ) : (
-          <>
-            <Icon name="sparkle" /> 단어장 만들기
-          </>
+          "단어장 만들기"
         )}
-        <Sparkle className="absolute -top-3 right-6 w-6 rotate-12" />
+        <ArrowDot />
       </button>
     </form>
   );
@@ -174,17 +176,24 @@ function htmlToPlainLyrics(html: string): string {
   return doc.body.textContent ?? "";
 }
 
-function Field({ en, ko, hint, children }: { en: string; ko: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="block">
-      <span className="mb-2 flex items-baseline justify-between">
-        <span className="flex items-baseline gap-2">
-          <span className="font-mono text-[11px] font-bold tracking-wider text-pink-text">{en}</span>
-          <span className="text-sm font-bold">{ko}</span>
-        </span>
-        {hint && <span className="font-mono text-[11px] text-ink-3">{hint}</span>}
-      </span>
+    <div>
+      <label htmlFor={htmlFor} className="mb-2 flex items-baseline justify-between text-[15px] font-semibold">
+        {label}
+        {hint && <span className="text-[13px] font-normal text-ink-3">{hint}</span>}
+      </label>
       {children}
-    </label>
+    </div>
   );
 }

@@ -42,15 +42,14 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
   }, [key, explanation, attempt]);
 
   return (
-    <div className="mt-1 mb-4 rounded-2xl border-2 border-black bg-lav px-4 py-3.5 text-[15px] text-black">
+    <div className="mt-1 mb-4 rounded-[20px] bg-lav px-4 py-3.5 text-[15px] text-on-lav">
       {explanation ? (
         <div className="space-y-3">
-          <p className="font-mono text-[10px] font-bold tracking-wider opacity-70">[ TRANSLATION ]</p>
-          <p className="-mt-2 text-[16px] font-extrabold">{explanation.translation}</p>
+          <p className="text-[16px] font-bold">{explanation.translation}</p>
           <ul className="space-y-1">
             {explanation.breakdown.map((b, i) => (
               <li key={i} className="flex gap-3">
-                <span className="font-jp shrink-0 rounded-md bg-white/70 px-1.5 font-bold">{b.part}</span>
+                <span className="font-jp shrink-0 rounded-lg bg-surface/70 px-2 font-semibold">{b.part}</span>
                 <span className="opacity-80">{b.meaning}</span>
               </li>
             ))}
