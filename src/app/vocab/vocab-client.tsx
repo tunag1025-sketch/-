@@ -1,15 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
 import { Headline } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
-import { Stat } from "@/components/Stat";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
 import { kataToHira } from "@/lib/furigana";
-import { isDue, isLearned } from "@/lib/srs";
+import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
+import { isLearned } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 
 export function VocabClient() {
@@ -20,11 +21,21 @@ export function VocabClient() {
   );
 }
 
+type Status = "all" | "studying" | "learned";
+const STATUSES: [Status, string][] = [
+  ["all", "전체"],
+  ["studying", "학습 중"],
+  ["learned", "외운 단어"],
+];
+
 function VocabList() {
   const songs = useStore((s) => s.songs);
   const order = useStore((s) => s.order);
   const cards = useStore((s) => s.cards);
+  const newLog = useStore((s) => s.newLog);
+  const dailyNew = useStore((s) => s.settings.dailyNew);
   const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<Status>("all");
   const [songFilter, setSongFilter] = useState<string>("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const [now] = useState(Date.now);
@@ -36,22 +47,55 @@ function VocabList() {
   const q = kataToHira(query.trim().toLowerCase());
   const items = all.filter(
     (v) =>
+      (status === "all" || (status === "learned") === isLearned(cards[v.id])) &&
       (songFilter === "all" || v.songId === songFilter) &&
       (!q || v.word.includes(q) || v.reading.includes(q) || v.meaning.toLowerCase().includes(q)),
   );
   const open = openId ? all.find((v) => v.id === openId) : undefined;
   const songsWithVocab = order.filter((id) => songs[id]?.vocab.length);
   const learned = all.filter((v) => isLearned(cards[v.id])).length;
-  const due = all.filter((v) => cards[v.id] && isDue(cards[v.id], now)).length;
+  const today = useMemo(
+    () => buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }).queue.length,
+    [songs, order, cards, now, dailyNew, newLog],
+  );
+  const counts: Record<Status, number> = { all: all.length, studying: all.length - learned, learned };
 
   return (
     <div className="space-y-5 pt-5">
       <Headline first="노래에서 모은" second="나의 단어장" />
 
-      <div className="card grid grid-cols-3 py-4">
-        <Stat value={all.length} label="모은 단어" />
-        <Stat value={learned} label="외운 단어" />
-        <Stat value={due} label="복습 대기" />
+      {all.length > 0 && (
+        <Link href={today ? reviewHref() : "/study"} className="card press flex items-center gap-3 px-4 py-3.5">
+          <IconCircle name="cards" className="size-11" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[16px] font-semibold">모은 단어로 학습하기</p>
+            <p className="text-[13px] text-ink-3">
+              {today ? (
+                <>
+                  외운 단어는 빼고 · 오늘 <span className="num">{today}</span>개
+                </>
+              ) : (
+                "오늘 학습할 단어를 다 했어요"
+              )}
+            </p>
+          </div>
+          <Icon name="chevron" className="size-5 shrink-0 text-ink-3" />
+        </Link>
+      )}
+
+      <div className="grid grid-cols-3 rounded-full bg-muted p-1" role="tablist" aria-label="단어 상태">
+        {STATUSES.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={status === key}
+            onClick={() => setStatus(key)}
+            className="press rounded-full py-2 text-[14px] font-semibold text-ink-3 aria-selected:bg-surface aria-selected:text-ink aria-selected:shadow-sm"
+          >
+            {label} <span className="num font-medium">{counts[key]}</span>
+          </button>
+        ))}
       </div>
 
       <div className="relative">
@@ -88,7 +132,13 @@ function VocabList() {
         <div className="flex flex-col items-center py-12 text-center">
           <IconCircle name={all.length === 0 ? "book" : "search"} tone="muted" className="size-16" />
           <p className="mt-3 text-[14px] text-ink-3">
-            {all.length === 0 ? "노래를 추가하면 여기에 단어가 모여요." : "찾는 단어가 없어요."}
+            {all.length === 0
+              ? "노래를 추가하면 여기에 단어가 모여요."
+              : q || songFilter !== "all"
+                ? "찾는 단어가 없어요."
+                : status === "learned"
+                  ? "아직 외운 단어가 없어요. 학습에서 완벽을 고르면 여기로 모여요."
+                  : "모든 단어를 외웠어요!"}
           </p>
         </div>
       ) : (
@@ -97,7 +147,7 @@ function VocabList() {
             <VocabRow
               key={v.id}
               item={v}
-              suspended={cards[v.id]?.suspended}
+              learned={cards[v.id]?.learned}
               sub={songFilter === "all" && songsWithVocab.length > 1 ? songs[v.songId]?.title : undefined}
               onClick={() => setOpenId(v.id)}
             />

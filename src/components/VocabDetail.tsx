@@ -1,5 +1,6 @@
 "use client";
 
+import { LEARNED_INTERVAL_DAYS, LEARNED_PERFECT_STREAK } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song, VocabItem } from "@/lib/types";
 import { Badge } from "./Badge";
@@ -21,11 +22,22 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 /** 단어 하나의 뜻·설명·예문·가사 속 위치를 보여준다. */
-export function VocabDetail({ item, song, showHeading = true }: { item: VocabItem; song?: Song; showHeading?: boolean }) {
+export function VocabDetail({
+  item,
+  song,
+  showHeading = true,
+  onLearned,
+}: {
+  item: VocabItem;
+  song?: Song;
+  showHeading?: boolean;
+  /** 외운 단어로 옮긴 뒤 불린다 (학습 화면에서 다음 카드로 넘길 때) */
+  onLearned?: () => void;
+}) {
   const card = useStore((s) => s.cards[item.id]);
-  const setSuspended = useStore((s) => s.setSuspended);
+  const setLearned = useStore((s) => s.setLearned);
   const furigana = useStore((s) => s.settings.furigana);
-  const suspended = card?.suspended ?? false;
+  const learned = card?.learned ?? false;
 
   return (
     <div className="space-y-6">
@@ -68,20 +80,30 @@ export function VocabDetail({ item, song, showHeading = true }: { item: VocabIte
         </section>
       )}
 
-      <button
-        type="button"
-        onClick={() => setSuspended(item.id, !suspended)}
-        aria-pressed={suspended}
-        className="press btn-ghost flex w-full items-center justify-center gap-1.5 px-4 py-3.5 text-[15px] font-semibold aria-pressed:border-blue aria-pressed:bg-blue-soft"
-      >
-        {suspended ? (
-          <>
-            <Icon name="check" className="size-4" /> 외운 단어 · 다시 복습하기
-          </>
-        ) : (
-          "이미 아는 단어예요 · 복습에서 빼기"
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            setLearned(item.id, !learned);
+            if (!learned) onLearned?.();
+          }}
+          aria-pressed={learned}
+          className="press btn-ghost flex w-full items-center justify-center gap-1.5 px-4 py-3.5 text-[15px] font-semibold aria-pressed:border-blue aria-pressed:bg-blue-soft"
+        >
+          {learned ? (
+            <>
+              <Icon name="check" className="size-4" /> 외운 단어 · 다시 학습하기
+            </>
+          ) : (
+            "이미 아는 단어예요 · 외운 단어로 옮기기"
+          )}
+        </button>
+        {!learned && (
+          <p className="mt-2 text-center text-[12px] leading-relaxed text-ink-3">
+            완벽을 {LEARNED_PERFECT_STREAK}번 연달아 고르거나 {LEARNED_INTERVAL_DAYS / 7}주 넘게 기억하면 저절로 옮겨져요.
+          </p>
         )}
-      </button>
+      </div>
     </div>
   );
 }

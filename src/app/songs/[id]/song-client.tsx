@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
@@ -15,6 +15,8 @@ import { Stat } from "@/components/Stat";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
 import { startAnalysis, useInFlight } from "@/lib/api-client";
+import { fileToCover } from "@/lib/image";
+import { reviewHref } from "@/lib/review";
 import { isLearned } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song } from "@/lib/types";
@@ -83,7 +85,7 @@ function SongView({ song }: { song: Song }) {
             second={<span className="font-sans">{song.artist || "아티스트 미상"}</span>}
           />
         </div>
-        <SongCover id={song.id} title={song.title} className="size-[76px] rounded-[26px] text-[34px]" />
+        <CoverPicker song={song} />
       </section>
       {song.summary && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{song.summary}</p>}
 
@@ -180,7 +182,7 @@ function SongView({ song }: { song: Song }) {
         <ul className="card divide-y divide-line overflow-hidden">
           {total === 0 && <EmptyAnalysis song={song} />}
           {song.vocab.map((v) => (
-            <VocabRow key={v.id} item={v} suspended={cards[v.id]?.suspended} onClick={() => setOpenWord(v.id)} />
+            <VocabRow key={v.id} item={v} learned={cards[v.id]?.learned} onClick={() => setOpenWord(v.id)} />
           ))}
         </ul>
       )}
@@ -209,10 +211,10 @@ function SongView({ song }: { song: Song }) {
 
       {song.status === "ready" && total > 0 && (
         <Link
-          href={`/review?song=${song.id}`}
+          href={reviewHref(song.id)}
           className="btn-primary press mt-6 flex items-center justify-center py-4 text-[16px] font-semibold"
         >
-          이 노래 단어 복습하기
+          이 노래 단어 학습하기
         </Link>
       )}
 
@@ -225,7 +227,7 @@ function SongView({ song }: { song: Song }) {
           <IconCircle name="trash" tone="danger" className="size-16" />
           <p className="font-jp mt-3 text-[20px] font-bold">{song.title}</p>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
-            이 노래와 단어장, 복습 기록이 모두 지워져요.
+            이 노래와 단어장, 학습 기록이 모두 지워져요.
             <br />
             되돌릴 수 없어요.
           </p>
@@ -254,6 +256,68 @@ function SongView({ song }: { song: Song }) {
   );
 }
 
+
+function CoverPicker({ song }: { song: Song }) {
+  const updateSong = useStore((s) => s.updateSong);
+  const input = useRef<HTMLInputElement>(null);
+  const [menu, setMenu] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      updateSong(song.id, { cover: await fileToCover(file) });
+      setError(null);
+      setMenu(false);
+    } catch {
+      setError("사진을 읽지 못했어요. 다른 사진을 골라 주세요.");
+      setMenu(true);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => (song.cover ? setMenu(true) : input.current?.click())}
+        aria-label={song.cover ? "커버 사진 바꾸기" : "커버 사진 넣기"}
+        className="press relative shrink-0"
+      >
+        <SongCover song={song} className="size-[76px] rounded-[26px]" />
+        <span className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full border-2 border-bg bg-surface text-ink-2 shadow-sm">
+          <Icon name="camera" className="size-3.5" />
+        </span>
+      </button>
+      <input ref={input} type="file" accept="image/*" onChange={onFile} className="hidden" />
+      <Sheet open={menu} onClose={() => setMenu(false)} title="커버 사진">
+        {error && <p className="mb-4 text-[15px] text-danger">{error}</p>}
+        <div className="grid gap-2.5">
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            className="btn-primary press py-3.5 text-[15px] font-semibold"
+          >
+            다른 사진 고르기
+          </button>
+          {song.cover && (
+            <button
+              type="button"
+              onClick={() => {
+                updateSong(song.id, { cover: undefined });
+                setMenu(false);
+              }}
+              className="btn-ghost press py-3.5 text-[15px] font-semibold"
+            >
+              사진 지우고 랜덤 그림 쓰기
+            </button>
+          )}
+        </div>
+      </Sheet>
+    </>
+  );
+}
 
 function AnalysisStatus({ song }: { song: Song }) {
   const inFlight = useInFlight((s) => s.ids.has(song.id));

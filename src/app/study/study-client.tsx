@@ -1,0 +1,187 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { HydrationGate } from "@/components/HydrationGate";
+import { Icon } from "@/components/Icon";
+import { Headline } from "@/components/PageHeader";
+import { SongCover } from "@/components/SongCover";
+import { buildQueue, DAILY_NEW_OPTIONS, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
+import { dayKey } from "@/lib/stats";
+import { useStore } from "@/lib/store";
+
+export function StudyClient() {
+  return (
+    <HydrationGate>
+      <Study />
+    </HydrationGate>
+  );
+}
+
+/** 학습 범위(모은 단어 전체 / 노래 하나)와 하루 학습량을 고르고 시작한다. */
+function Study() {
+  const songs = useStore((s) => s.songs);
+  const order = useStore((s) => s.order);
+  const cards = useStore((s) => s.cards);
+  const newLog = useStore((s) => s.newLog);
+  const dailyNew = useStore((s) => s.settings.dailyNew);
+  const setSettings = useStore((s) => s.setSettings);
+  const [now] = useState(Date.now);
+  const [scope, setScope] = useState<string>("all");
+
+  const newToday = newLog[dayKey(now)] ?? 0;
+  const newLimit = remainingNew(dailyNew, newLog, now);
+  const plan = useMemo(() => {
+    const ready = order.filter((id) => songs[id]?.status === "ready" && songs[id].vocab.length > 0);
+    const count = (id?: string) => buildQueue(songs, order, cards, now, { songId: id, newLimit });
+    return { ready, all: count(), bySong: Object.fromEntries(ready.map((id) => [id, count(id)])) };
+  }, [songs, order, cards, now, newLimit]);
+  const { ready } = plan;
+  const songId = ready.includes(scope) ? scope : undefined;
+  const current = songId ? plan.bySong[songId] : plan.all;
+  const total = current.queue.length;
+  const extra = Math.max(0, newToday - dailyNew) + EXTRA_NEW;
+
+  return (
+    <div className="space-y-7 pt-5">
+      <Headline className="text-[30px]" first="어떤 단어로" second="학습할까요?" />
+
+      <section className="iris-card p-5" aria-live="polite">
+        <p className="font-jp truncate text-[13px] font-medium text-ink-3">
+          {songId ? songs[songId].title : "모은 단어 전체"}
+        </p>
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <p className="flex items-baseline gap-1">
+            <span className="num text-[48px] leading-none font-medium">{total}</span>
+            <span className="text-[16px] font-semibold text-ink-2">개</span>
+          </p>
+          <dl className="space-y-1 text-right text-[13px]">
+            <div className="flex justify-end gap-2">
+              <dt className="text-ink-3">다시 볼 단어</dt>
+              <dd className="num w-6 font-semibold">{current.dueCount}</dd>
+            </div>
+            <div className="flex justify-end gap-2">
+              <dt className="text-ink-3">새 단어</dt>
+              <dd className="num w-6 font-semibold">{current.newCount}</dd>
+            </div>
+          </dl>
+        </div>
+        {total > 0 ? (
+          <Link
+            href={reviewHref(songId)}
+            className="btn-primary press mt-5 flex items-center justify-center py-3.5 text-[15px] font-semibold"
+          >
+            학습 시작
+          </Link>
+        ) : current.freshTotal > 0 ? (
+          <>
+            <p className="mt-3 text-[14px] text-ink-2">오늘 배울 새 단어를 다 배웠어요.</p>
+            <Link
+              href={reviewHref(songId, extra)}
+              className="btn-primary press mt-4 flex items-center justify-center py-3.5 text-[15px] font-semibold"
+            >
+              새 단어 {Math.min(EXTRA_NEW, current.freshTotal)}개 더 학습하기
+            </Link>
+          </>
+        ) : (
+          <p className="mt-3 text-[14px] text-ink-2">
+            {ready.length ? "지금 학습할 단어가 없어요. 다시 볼 때가 되면 생겨요." : "노래를 추가하면 단어가 모여요."}
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-[19px] font-semibold">범위</h2>
+        <ul className="space-y-2" role="radiogroup" aria-label="학습 범위">
+          <ScopeRow
+            selected={!songId}
+            onSelect={() => setScope("all")}
+            icon={
+              <span className="grid size-[52px] shrink-0 place-items-center rounded-[18px] bg-blue-soft text-blue">
+                <Icon name="cards" className="size-6" />
+              </span>
+            }
+            title="모은 단어 전체"
+            sub={`노래 ${ready.length}곡 · 외운 단어는 빼고`}
+            count={plan.all.queue.length}
+          />
+          {ready.map((id) => (
+            <ScopeRow
+              key={id}
+              selected={songId === id}
+              onSelect={() => setScope(id)}
+              icon={<SongCover song={songs[id]} className="size-[52px] rounded-[18px] text-[22px]" />}
+              title={songs[id].title}
+              sub={songs[id].artist || "아티스트 미상"}
+              count={plan.bySong[id].queue.length}
+              jp
+            />
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-[19px] font-semibold">하루 학습량</h2>
+        <p className="mt-1 mb-3 text-[14px] text-ink-3">하루에 새로 배울 단어 수예요. 다시 볼 단어는 이와 상관없이 모두 나와요.</p>
+        <div className="grid grid-cols-5 gap-2">
+          {DAILY_NEW_OPTIONS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={dailyNew === n}
+              onClick={() => setSettings({ dailyNew: n })}
+              className="chip press justify-center gap-0 px-0"
+            >
+              <span className="num">{n}</span>개
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-[13px] text-ink-3">
+          오늘 새로 배운 단어 <span className="num font-semibold text-ink-2">{newToday}</span>개 · 남은 몫{" "}
+          <span className="num font-semibold text-ink-2">{newLimit}</span>개
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function ScopeRow({
+  selected,
+  onSelect,
+  icon,
+  title,
+  sub,
+  count,
+  jp = false,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  icon: React.ReactNode;
+  title: string;
+  sub: string;
+  count: number;
+  jp?: boolean;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        onClick={onSelect}
+        className={`press flex w-full items-center gap-3.5 rounded-[22px] border bg-surface p-3 text-left shadow-[var(--shadow)] ${
+          selected ? "border-blue ring-2 ring-blue-soft" : "border-line"
+        }`}
+      >
+        {icon}
+        <div className="min-w-0 flex-1">
+          <div className={`truncate text-[16px] font-bold ${jp ? "font-jp" : ""}`}>{title}</div>
+          <div className="truncate text-[13px] text-ink-3">{sub}</div>
+        </div>
+        <span className={`shrink-0 text-[13px] font-semibold ${count ? "text-blue" : "text-ink-3"}`}>
+          오늘 <span className="num">{count}</span>개
+        </span>
+      </button>
+    </li>
+  );
+}

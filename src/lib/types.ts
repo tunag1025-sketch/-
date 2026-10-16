@@ -65,6 +65,8 @@ export type Song = {
   vocab: VocabItem[];
   grammar: GrammarPoint[];
   isDemo?: boolean;
+  /** 직접 고른 커버 사진 (JPEG data URL) */
+  cover?: string;
 };
 
 /** 단어 카드 하나의 간격 반복 상태 */
@@ -76,11 +78,15 @@ export type CardState = {
   reps: number;
   lapses: number;
   lastReviewed?: number;
-  /** 외워서 복습에서 뺀 카드 */
-  suspended?: boolean;
+  /** 연달아 '완벽'을 고른 횟수 */
+  perfect?: number;
+  /** 외운 단어로 옮긴 카드. 학습 목록에서 빠진다. */
+  learned?: boolean;
+  learnedAt?: number;
 };
 
-export type Grade = "again" | "hard" | "good" | "easy";
+/** 다시 · 이해 · 완벽 */
+export type Grade = "again" | "good" | "perfect";
 
 export type LineExplanation = {
   translation: string;

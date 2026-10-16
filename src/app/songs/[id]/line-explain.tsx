@@ -1,45 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Spinner } from "@/components/Spinner";
-import { explainLine } from "@/lib/api-client";
-import { explanationKey, useStore } from "@/lib/store";
 import type { Song } from "@/lib/types";
-
-const nearbyLine = (song: Song, from: number, step: number) => {
-  for (let i = from + step; i >= 0 && i < song.lines.length; i += step) {
-    if (song.lines[i].text.trim()) return song.lines[i].text;
-  }
-  return undefined;
-};
+import { useLineExplanation } from "@/lib/use-line-explanation";
 
 /** 가사 한 줄의 해석과 끊어 읽기. 한 번 받은 해설은 저장해 두고 다시 쓴다. */
 export function LineExplain({ song, index }: { song: Song; index: number }) {
-  const key = explanationKey(song.id, index);
-  const explanation = useStore((s) => s.explanations[key]);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    if (explanation) return;
-    let alive = true;
-    explainLine({
-      title: song.title,
-      artist: song.artist,
-      level: song.level,
-      line: song.lines[index].text,
-      before: nearbyLine(song, index, -1),
-      after: nearbyLine(song, index, 1),
-    })
-      .then((res) => useStore.getState().setExplanation(key, res))
-      .catch((err) => alive && setError(err instanceof Error ? err.message : "해설을 가져오지 못했어요."));
-    return () => {
-      alive = false;
-    };
-    // song 객체 전체가 아니라 줄 내용이 바뀔 때만 다시 요청한다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, explanation, attempt]);
+  const { explanation, error, retry } = useLineExplanation(song, index);
 
   return (
     <div className="iris mt-1 mb-4 rounded-[20px] px-4 py-3.5 text-[15px]">
@@ -61,10 +29,7 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
           <p className="text-ink-2">{error}</p>
           <button
             type="button"
-            onClick={() => {
-              setError(null);
-              setAttempt((n) => n + 1);
-            }}
+            onClick={retry}
             className="mt-1.5 flex items-center gap-1.5 font-semibold text-blue"
           >
             <Icon name="refresh" className="size-4" /> 다시 시도

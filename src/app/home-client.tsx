@@ -9,9 +9,9 @@ import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
 import { Stat } from "@/components/Stat";
 import { useInFlight } from "@/lib/api-client";
-import { buildQueue } from "@/lib/review";
+import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
 import { isLearned } from "@/lib/srs";
-import { greeting, lastDays, streak } from "@/lib/stats";
+import { dayKey, greeting, lastDays, streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 import type { CardState, Song } from "@/lib/types";
 import { useAiStatus } from "@/lib/use-ai-status";
@@ -32,14 +32,17 @@ function Home() {
   const order = useStore((s) => s.order);
   const cards = useStore((s) => s.cards);
   const reviewLog = useStore((s) => s.reviewLog);
+  const newLog = useStore((s) => s.newLog);
+  const dailyNew = useStore((s) => s.settings.dailyNew);
   const ai = useAiStatus();
   const [now] = useState(Date.now);
   const [filter, setFilter] = useState<Filter>("all");
 
-  const { queue, dueCount, newCount } = useMemo(
-    () => buildQueue(songs, order, cards, now),
-    [songs, order, cards, now],
+  const { queue, dueCount, newCount, freshTotal } = useMemo(
+    () => buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }),
+    [songs, order, cards, now, dailyNew, newLog],
   );
+  const extra = Math.max(0, (newLog[dayKey(now)] ?? 0) - dailyNew) + EXTRA_NEW;
   const allVocab = useMemo(
     () => order.flatMap((id) => (songs[id]?.status === "ready" ? songs[id].vocab : [])),
     [songs, order],
@@ -84,9 +87,14 @@ function Home() {
           style={{ maskImage: "linear-gradient(to bottom, transparent, black)", WebkitMaskImage: "linear-gradient(to bottom, transparent, black)" }}
           aria-hidden
         />
+        <div className="relative flex items-center justify-between gap-3">
+          <p className="text-[13px] font-medium text-ink-3">오늘 학습할 단어</p>
+          <Link href="/study" className="-my-1 flex items-center py-1 text-[13px] font-medium text-ink-3">
+            하루 새 단어 <span className="num mx-0.5">{dailyNew}</span>개 <Icon name="chevron" className="size-4" />
+          </Link>
+        </div>
         <div className="relative flex items-end justify-between gap-3">
           <div>
-            <p className="text-[13px] font-medium text-ink-3">오늘 복습할 단어</p>
             <p className="mt-2 flex items-baseline gap-1">
               <span className="num text-[56px] leading-none font-medium">{queue.length}</span>
               <span className="text-[17px] font-semibold text-ink-2">개</span>
@@ -106,13 +114,21 @@ function Home() {
           )}
         </div>
         <p className="relative mt-3 text-[15px] font-medium text-ink-2">
-          {queue.length ? "노래 속 단어를 복습할 시간이에요." : "오늘 복습은 모두 끝났어요."}
+          {queue.length
+            ? "노래 속 단어를 학습할 시간이에요."
+            : freshTotal
+              ? "오늘 배울 새 단어를 다 배웠어요."
+              : "오늘 학습은 모두 끝났어요."}
         </p>
         <Link
-          href={queue.length ? "/review" : "/songs/new"}
+          href={queue.length ? reviewHref() : freshTotal ? reviewHref(undefined, extra) : "/songs/new"}
           className="btn-primary press relative mt-5 flex items-center justify-center py-3.5 text-[15px] font-semibold"
         >
-          {queue.length ? "복습 시작" : "새 노래 추가하기"}
+          {queue.length
+            ? "학습 시작"
+            : freshTotal
+              ? `새 단어 ${Math.min(EXTRA_NEW, freshTotal)}개 더 학습하기`
+              : "새 노래 추가하기"}
         </Link>
       </section>
 
@@ -132,11 +148,11 @@ function Home() {
         </div>
         <div className="card px-5 pt-5 pb-4">
           <div className="grid grid-cols-3">
-            <Stat className="text-[32px]" value={weekTotal} label="이번 주 복습" />
+            <Stat className="text-[32px]" value={weekTotal} label="이번 주 학습" />
             <Stat className="text-[32px]" value={learned} label="외운 단어" />
             <Stat className="text-[32px]" value={allVocab.length} label="모은 단어" />
           </div>
-          <ol className="mt-5 flex justify-between border-t border-line pt-4" aria-label="최근 7일 복습 기록">
+          <ol className="mt-5 flex justify-between border-t border-line pt-4" aria-label="최근 7일 학습 기록">
             {week.map((d, i) => {
               const date = new Date(d.ts);
               const today = i === week.length - 1;
@@ -144,7 +160,7 @@ function Home() {
                 <li
                   key={d.key}
                   className="flex flex-col items-center gap-1.5"
-                  aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일 ${d.count}개 복습`}
+                  aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일 ${d.count}개 학습`}
                 >
                   <span className={`text-[12px] font-medium ${today ? "text-blue" : "text-ink-3"}`}>
                     {WEEKDAYS[date.getDay()]}
@@ -220,7 +236,7 @@ function SongRow({ song, cards }: { song: Song; cards: Record<string, CardState>
   return (
     <li>
       <Link href={`/songs/${song.id}`} className="card press flex items-center gap-3.5 p-3">
-        <SongCover id={song.id} title={song.title} />
+        <SongCover song={song} />
         <div className="min-w-0 flex-1">
           <div className="font-jp truncate text-[16px] font-bold">{song.title}</div>
           <div className="truncate text-[13px] text-ink-3">

@@ -3,8 +3,8 @@
 import { create } from "zustand";
 import type { AnalyzeResponse } from "./analysis/normalize";
 import type { ExplainRequest } from "./analysis/schema";
-import { useStore } from "./store";
-import type { LineExplanation, LyricLine } from "./types";
+import { explanationKey, useStore } from "./store";
+import type { LineExplanation, LyricLine, Song } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -40,6 +40,40 @@ export async function tokenize(lines: string[]): Promise<LyricLine[]> {
 
 export function explainLine(req: ExplainRequest): Promise<LineExplanation> {
   return postJson<LineExplanation>("/api/explain", req);
+}
+
+const nearbyLine = (song: Song, from: number, step: number) => {
+  for (let i = from + step; i >= 0 && i < song.lines.length; i += step) {
+    if (song.lines[i].text.trim()) return song.lines[i].text;
+  }
+  return undefined;
+};
+
+const pendingExplain = new Map<string, Promise<LineExplanation>>();
+
+/** 가사 한 줄의 해설을 받아 저장한다. 이미 있으면 그대로 쓰고, 같은 줄을 동시에 두 번 요청하지 않는다. */
+export function fetchExplanation(song: Song, index: number): Promise<LineExplanation> {
+  const key = explanationKey(song.id, index);
+  const saved = useStore.getState().explanations[key];
+  if (saved) return Promise.resolve(saved);
+  let pending = pendingExplain.get(key);
+  if (!pending) {
+    pending = explainLine({
+      title: song.title,
+      artist: song.artist,
+      level: song.level,
+      line: song.lines[index].text,
+      before: nearbyLine(song, index, -1),
+      after: nearbyLine(song, index, 1),
+    })
+      .then((res) => {
+        useStore.getState().setExplanation(key, res);
+        return res;
+      })
+      .finally(() => pendingExplain.delete(key));
+    pendingExplain.set(key, pending);
+  }
+  return pending;
 }
 
 /** 지금 이 탭에서 분석 요청이 진행 중인 노래 id들 */

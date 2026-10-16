@@ -2,14 +2,18 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { newCard, schedule } from "./srs";
+import { LEARNED_INTERVAL_DAYS, newCard, schedule } from "./srs";
 import { dayKey } from "./stats";
 import type { CardState, Grade, Level, LineExplanation, Song } from "./types";
 
 type Settings = {
   furigana: boolean;
   defaultLevel: Level;
+  /** 하루에 새로 배울 단어 수 */
+  dailyNew: number;
 };
+
+const DEFAULT_SETTINGS: Settings = { furigana: true, defaultLevel: "N4", dailyNew: 20 };
 
 type State = {
   songs: Record<string, Song>;
@@ -19,6 +23,8 @@ type State = {
   explanations: Record<string, LineExplanation>;
   /** 날짜(YYYY-MM-DD)별로 답한 카드 수 */
   reviewLog: Record<string, number>;
+  /** 날짜별로 처음 학습한 새 단어 수 */
+  newLog: Record<string, number>;
   settings: Settings;
   seededDemo: boolean;
 
@@ -28,7 +34,8 @@ type State = {
   updateSong: (id: string, patch: Partial<Song>) => void;
   removeSong: (id: string) => void;
   grade: (vocabId: string, grade: Grade) => void;
-  setSuspended: (vocabId: string, suspended: boolean) => void;
+  /** 외운 단어로 옮기거나 다시 학습 목록으로 돌린다. */
+  setLearned: (vocabId: string, learned: boolean) => void;
   setExplanation: (key: string, explanation: LineExplanation) => void;
   setSettings: (patch: Partial<Settings>) => void;
   markDemoSeeded: () => void;
@@ -44,7 +51,8 @@ export const useStore = create<State>()(
       cards: {},
       explanations: {},
       reviewLog: {},
-      settings: { furigana: true, defaultLevel: "N4" },
+      newLog: {},
+      settings: DEFAULT_SETTINGS,
       seededDemo: false,
 
       addSong: (song) =>
@@ -82,16 +90,30 @@ export const useStore = create<State>()(
         set((s) => {
           const now = Date.now();
           const day = dayKey(now);
+          const isNew = !s.cards[vocabId];
           return {
             cards: { ...s.cards, [vocabId]: schedule(s.cards[vocabId] ?? newCard(now), grade, now) },
             reviewLog: { ...s.reviewLog, [day]: (s.reviewLog[day] ?? 0) + 1 },
+            newLog: isNew ? { ...s.newLog, [day]: (s.newLog[day] ?? 0) + 1 } : s.newLog,
           };
         }),
 
-      setSuspended: (vocabId, suspended) =>
-        set((s) => ({
-          cards: { ...s.cards, [vocabId]: { ...(s.cards[vocabId] ?? newCard(Date.now())), suspended } },
-        })),
+      setLearned: (vocabId, learned) =>
+        set((s) => {
+          const now = Date.now();
+          const card = s.cards[vocabId] ?? newCard(now);
+          // 다시 학습할 때는 연속 '완벽'을 지우고 바로 학습 목록에 올린다.
+          const next: CardState = learned
+            ? { ...card, learned: true, learnedAt: now }
+            : { ...card, learned: false, learnedAt: undefined, perfect: 0, due: now };
+          // 처음 보는 단어를 바로 외운 단어로 옮겨도 오늘 배운 새 단어로 센다.
+          const day = dayKey(now);
+          const isNew = !s.cards[vocabId];
+          return {
+            cards: { ...s.cards, [vocabId]: next },
+            newLog: isNew ? { ...s.newLog, [day]: (s.newLog[day] ?? 0) + 1 } : s.newLog,
+          };
+        }),
 
       setExplanation: (key, explanation) =>
         set((s) => ({ explanations: { ...s.explanations, [key]: explanation } })),
@@ -103,6 +125,25 @@ export const useStore = create<State>()(
     {
       name: "utango-v1",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<State> & { cards?: Record<string, CardState & { suspended?: boolean }> };
+        if (version < 1 && state.cards) {
+          // 예전 '복습에서 빼기'(suspended)와 3주 넘게 기억한 단어는 외운 단어로 옮긴다.
+          state.cards = Object.fromEntries(
+            Object.entries(state.cards).map(([id, { suspended, ...card }]) => {
+              const learned = suspended === true || card.interval >= LEARNED_INTERVAL_DAYS;
+              return [id, learned ? { ...card, learned, learnedAt: card.lastReviewed } : card];
+            }),
+          );
+        }
+        return state as State;
+      },
+      // 설정에 새 항목이 생겨도 기본값이 채워지게 한 단계 더 합친다.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<State>;
+        return { ...current, ...p, settings: { ...current.settings, ...p.settings } };
+      },
       // 서버 렌더와 첫 클라이언트 렌더를 맞추기 위해 마운트 후에 직접 rehydrate 한다.
       skipHydration: true,
     },

@@ -6,14 +6,14 @@ import { Icon, type IconName } from "./Icon";
 
 const TABS: { href: string; label: string; icon: IconName; match: (p: string) => boolean }[] = [
   { href: "/", label: "홈", icon: "home", match: (p) => p === "/" || (p.startsWith("/songs") && p !== "/songs/new") },
-  { href: "/review", label: "복습", icon: "cards", match: (p) => p.startsWith("/review") },
+  { href: "/study", label: "학습", icon: "cards", match: (p) => p.startsWith("/study") || p.startsWith("/review") },
   { href: "/vocab", label: "단어장", icon: "book", match: (p) => p.startsWith("/vocab") },
 ];
 
 /** 떠 있는 유리 동그라미 탭 + 파란 노래 추가 버튼 */
 export function BottomNav() {
   const pathname = usePathname();
-  // 복습과 노래 추가 화면은 아래쪽을 자기 버튼에 쓴다.
+  // 복습 화면과 노래 추가 화면은 아래쪽을 자기 버튼에 쓴다.
   if (pathname.startsWith("/review") || pathname === "/songs/new") return null;
   return (
     <nav className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-30 px-5" aria-label="메뉴">

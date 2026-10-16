@@ -7,12 +7,12 @@ import { Icon } from "./Icon";
 /** 단어 목록의 한 줄 */
 export function VocabRow({
   item,
-  suspended,
+  learned,
   sub,
   onClick,
 }: {
   item: VocabItem;
-  suspended?: boolean;
+  learned?: boolean;
   sub?: string;
   onClick: () => void;
 }) {
@@ -32,7 +32,7 @@ export function VocabRow({
           {sub && <div className="font-jp mt-0.5 truncate text-[12px] text-ink-3">{sub}</div>}
         </div>
         <div className="shrink-0">
-          {suspended ? (
+          {learned ? (
             <span className="btn-primary grid size-7 place-items-center" aria-label="외운 단어">
               <Icon name="check" className="size-4" />
             </span>
