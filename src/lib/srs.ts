@@ -1,3 +1,4 @@
+import { cardOf } from "./cards";
 import type { CardState, Grade } from "./types";
 
 const MINUTE = 60_000;
@@ -97,15 +98,15 @@ export function memoryOf(card: CardState | undefined): Memory {
   return (card.correct ?? card.reps) > 0 ? "short" : "none";
 }
 
-/** 단어 목록의 진척도: 장기기억 수, 단기기억 수(장기 제외) */
+/** 단어 목록의 진척도: 장기기억 수, 단기기억 수(장기 제외). 다른 노래에서 익힌 단어도 센다. */
 export function progressOf(
-  vocab: { id: string }[],
+  vocab: { word: string }[],
   cards: Record<string, CardState>,
 ): { total: number; long: number; short: number } {
   let long = 0;
   let short = 0;
   for (const v of vocab) {
-    const m = memoryOf(cards[v.id]);
+    const m = memoryOf(cardOf(cards, v));
     if (m === "long") long++;
     else if (m === "short") short++;
   }

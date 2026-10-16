@@ -18,6 +18,7 @@ import { VocabRow } from "@/components/VocabRow";
 import { useAccount } from "@/lib/account";
 import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-client";
 import type { Artwork } from "@/lib/artwork";
+import { cardOf } from "@/lib/cards";
 import { fileToCover } from "@/lib/image";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
 import { memoryOf, progressOf } from "@/lib/srs";
@@ -214,7 +215,7 @@ function SongView({ song }: { song: Song }) {
         <ul className="card divide-y divide-line overflow-hidden">
           {total === 0 && <EmptyAnalysis song={song} />}
           {song.vocab.map((v) => (
-            <VocabRow key={v.id} item={v} memory={memoryOf(cards[v.id])} onClick={() => setOpenWord(v.id)} />
+            <VocabRow key={v.id} item={v} memory={memoryOf(cardOf(cards, v))} onClick={() => setOpenWord(v.id)} />
           ))}
         </ul>
       )}

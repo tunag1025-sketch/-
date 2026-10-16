@@ -11,6 +11,7 @@ import { Spinner } from "@/components/Spinner";
 import { Stat } from "@/components/Stat";
 import { useAccount } from "@/lib/account";
 import { useInFlight } from "@/lib/api-client";
+import { uniqueVocab } from "@/lib/cards";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
 import { progressOf } from "@/lib/srs";
 import { dayKey, greeting, lastDays, streak } from "@/lib/stats";
@@ -54,10 +55,8 @@ function Home() {
     [songs, order, cards, now, dailyNew, newLog],
   );
   const extra = Math.max(0, (newLog[dayKey(now)] ?? 0) - dailyNew) + EXTRA_NEW;
-  const allVocab = useMemo(
-    () => order.flatMap((id) => (songs[id]?.status === "ready" ? songs[id].vocab : [])),
-    [songs, order],
-  );
+  // 여러 노래에 나오는 단어는 하나로 센다.
+  const allVocab = useMemo(() => uniqueVocab(songs, order), [songs, order]);
   const memory = progressOf(allVocab, cards);
   const week = lastDays(reviewLog, now, 7);
   const days = streak(reviewLog, now);

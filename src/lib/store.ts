@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { migrateCards } from "./cards";
 import { LEARNED_INTERVAL_DAYS, newCard, schedule } from "./srs";
 import { dayKey } from "./stats";
 import { DEFAULT_SETTINGS, mergeData, type Settings, type UserData } from "./data";
@@ -17,9 +18,10 @@ type State = UserData & {
   createSong: (song: Pick<Song, "title" | "artist" | "level" | "lines">) => string;
   updateSong: (id: string, patch: Partial<Song>) => void;
   removeSong: (id: string) => void;
-  grade: (vocabId: string, grade: Grade) => void;
+  /** key는 cardKey(단어) */
+  grade: (key: string, grade: Grade) => void;
   /** 장기기억으로 옮기거나 다시 학습 목록으로 돌린다. */
-  setLearned: (vocabId: string, learned: boolean) => void;
+  setLearned: (key: string, learned: boolean) => void;
   setExplanation: (key: string, explanation: LineExplanation) => void;
   setSettings: (patch: Partial<Settings>) => void;
   markDemoSeeded: () => void;
@@ -68,47 +70,45 @@ export const useStore = create<State>()(
           s.songs[id] ? { songs: { ...s.songs, [id]: { ...s.songs[id], ...patch, updatedAt: Date.now() } } } : s,
         ),
 
+      // 단어 카드는 다른 노래와 같이 쓰니 남긴다 (같은 노래를 다시 넣으면 기록이 이어진다).
       removeSong: (id) =>
         set((s) => {
           const { [id]: removed, ...songs } = s.songs;
           if (!removed) return s;
           const prefix = `${id}:`;
-          const keep = <T,>(rec: Record<string, T>) =>
-            Object.fromEntries(Object.entries(rec).filter(([key]) => !key.startsWith(prefix)));
           return {
             songs,
             order: s.order.filter((x) => x !== id),
-            cards: keep(s.cards),
-            explanations: keep(s.explanations),
+            explanations: Object.fromEntries(Object.entries(s.explanations).filter(([key]) => !key.startsWith(prefix))),
             deleted: { ...s.deleted, [id]: Date.now() },
           };
         }),
 
-      grade: (vocabId, grade) =>
+      grade: (key, grade) =>
         set((s) => {
           const now = Date.now();
           const day = dayKey(now);
-          const isNew = !s.cards[vocabId];
+          const isNew = !s.cards[key];
           return {
-            cards: { ...s.cards, [vocabId]: { ...schedule(s.cards[vocabId] ?? newCard(now), grade, now), updatedAt: now } },
+            cards: { ...s.cards, [key]: { ...schedule(s.cards[key] ?? newCard(now), grade, now), updatedAt: now } },
             reviewLog: { ...s.reviewLog, [day]: (s.reviewLog[day] ?? 0) + 1 },
             newLog: isNew ? { ...s.newLog, [day]: (s.newLog[day] ?? 0) + 1 } : s.newLog,
           };
         }),
 
-      setLearned: (vocabId, learned) =>
+      setLearned: (key, learned) =>
         set((s) => {
           const now = Date.now();
-          const card = s.cards[vocabId] ?? newCard(now);
+          const card = s.cards[key] ?? newCard(now);
           // 다시 학습할 때는 연속 '완벽'을 지우고 바로 학습 목록에 올린다.
           const next: CardState = learned
             ? { ...card, learned: true, learnedAt: now, updatedAt: now }
             : { ...card, learned: false, learnedAt: undefined, perfect: 0, due: now, updatedAt: now };
           // 처음 보는 단어를 바로 장기기억으로 옮겨도 오늘 배운 새 단어로 센다.
           const day = dayKey(now);
-          const isNew = !s.cards[vocabId];
+          const isNew = !s.cards[key];
           return {
-            cards: { ...s.cards, [vocabId]: next },
+            cards: { ...s.cards, [key]: next },
             newLog: isNew ? { ...s.newLog, [day]: (s.newLog[day] ?? 0) + 1 } : s.newLog,
           };
         }),
@@ -125,7 +125,7 @@ export const useStore = create<State>()(
     {
       name: "utango-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
         const state = persisted as Partial<State> & { cards?: Record<string, CardState & { suspended?: boolean }> };
         if (version < 1 && state.cards) {
@@ -136,6 +136,10 @@ export const useStore = create<State>()(
               return [id, learned ? { ...card, learned, learnedAt: card.lastReviewed } : card];
             }),
           );
+        }
+        if (version < 2 && state.cards) {
+          // 노래마다 따로 있던 같은 단어 카드를 하나로 합친다 (더 많이 익힌 쪽을 남긴다).
+          state.cards = migrateCards(state.cards);
         }
         return state as State;
       },

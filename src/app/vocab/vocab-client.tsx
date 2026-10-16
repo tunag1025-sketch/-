@@ -8,10 +8,12 @@ import { Headline } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
+import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
 import { kataToHira } from "@/lib/furigana";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
 import { type Memory, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
+import type { VocabItem } from "@/lib/types";
 
 export function VocabClient() {
   return (
@@ -41,18 +43,29 @@ function VocabList() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [now] = useState(Date.now);
 
-  const all = useMemo(
-    () => order.flatMap((id) => (songs[id]?.status === "ready" ? songs[id].vocab : [])),
-    [songs, order],
-  );
+  // 여러 노래에 나오는 단어는 한 번만 (카드도 하나를 같이 쓴다)
+  const all = useMemo(() => uniqueVocab(songs, order), [songs, order]);
+  // 단어마다 나오는 노래 수
+  const songCount = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const id of order) {
+      if (songs[id]?.status !== "ready") continue;
+      for (const v of songs[id].vocab) count.set(cardKey(v), (count.get(cardKey(v)) ?? 0) + 1);
+    }
+    return count;
+  }, [songs, order]);
+  const songLabel = (v: VocabItem) => {
+    const more = (songCount.get(cardKey(v)) ?? 1) - 1;
+    return `${songs[v.songId]?.title ?? ""}${more > 0 ? ` 외 ${more}곡` : ""}`;
+  };
   const q = kataToHira(query.trim().toLowerCase());
-  const items = all.filter(
+  const base = songFilter === "all" ? all : (songs[songFilter]?.vocab ?? []);
+  const items = base.filter(
     (v) =>
-      (status === "all" || memoryOf(cards[v.id]) === status) &&
-      (songFilter === "all" || v.songId === songFilter) &&
+      (status === "all" || memoryOf(cardOf(cards, v)) === status) &&
       (!q || v.word.includes(q) || v.reading.includes(q) || v.meaning.toLowerCase().includes(q)),
   );
-  const open = openId ? all.find((v) => v.id === openId) : undefined;
+  const open = openId ? base.find((v) => v.id === openId) : undefined;
   const songsWithVocab = order.filter((id) => songs[id]?.vocab.length);
   const memory = progressOf(all, cards);
   const today = useMemo(
@@ -158,8 +171,8 @@ function VocabList() {
             <VocabRow
               key={v.id}
               item={v}
-              memory={memoryOf(cards[v.id])}
-              sub={songFilter === "all" && songsWithVocab.length > 1 ? songs[v.songId]?.title : undefined}
+              memory={memoryOf(cardOf(cards, v))}
+              sub={songFilter === "all" && songsWithVocab.length > 1 ? songLabel(v) : undefined}
               onClick={() => setOpenId(v.id)}
             />
           ))}

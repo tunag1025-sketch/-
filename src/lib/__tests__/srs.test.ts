@@ -91,6 +91,6 @@ describe("memory levels", () => {
 
   it("counts progress by level", () => {
     const cards = { a: run(["good"]), b: run(["perfect", "perfect", "perfect"]), c: run(["again"]) };
-    expect(progressOf([{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }], cards)).toEqual({ total: 4, long: 1, short: 1 });
+    expect(progressOf([{ word: "a" }, { word: "b" }, { word: "c" }, { word: "d" }], cards)).toEqual({ total: 4, long: 1, short: 1 });
   });
 });

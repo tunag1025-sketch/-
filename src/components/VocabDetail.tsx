@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+import { cardKey, cardOf, otherSongsWith } from "@/lib/cards";
 import { LEARNED_INTERVAL_DAYS, LEARNED_PERFECT_STREAK, memoryOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song, VocabItem } from "@/lib/types";
@@ -47,9 +49,13 @@ export function VocabDetail({
   /** 장기기억으로 옮긴 뒤 불린다 (학습 화면에서 다음 카드로 넘길 때) */
   onLearned?: () => void;
 }) {
-  const card = useStore((s) => s.cards[item.id]);
+  const card = useStore((s) => cardOf(s.cards, item));
   const setLearned = useStore((s) => s.setLearned);
   const furigana = useStore((s) => s.settings.furigana);
+  const songs = useStore((s) => s.songs);
+  const order = useStore((s) => s.order);
+  // 같은 단어가 나오는 다른 노래 (학습 기록은 함께 쓴다)
+  const alsoIn = useMemo(() => otherSongsWith(songs, order, item), [songs, order, item]);
   const learned = card?.learned ?? false;
   const memory = memoryOf(card);
 
@@ -79,6 +85,12 @@ export function VocabDetail({
               </li>
             ))}
           </ul>
+          {alsoIn.length > 0 && (
+            <p className="mt-2.5 text-[13px] leading-relaxed text-ink-3">
+              <span className="font-jp font-semibold text-ink-2">{alsoIn.map((s) => `「${s.title}」`).join(" ")}</span>
+              에도 나와요. 학습 기록은 함께 쌓여요.
+            </p>
+          )}
         </section>
       )}
 
@@ -105,7 +117,7 @@ export function VocabDetail({
         <button
           type="button"
           onClick={() => {
-            setLearned(item.id, !learned);
+            setLearned(cardKey(item), !learned);
             if (!learned) onLearned?.();
           }}
           aria-pressed={learned}

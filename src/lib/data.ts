@@ -1,3 +1,4 @@
+import { cardTime, putCard } from "./cards";
 import { DEFAULT_QUIZ_TYPES, type QuizType } from "./quiz";
 import type { CardState, Level, LineExplanation, Song } from "./types";
 
@@ -37,7 +38,7 @@ export type UserData = {
 };
 
 export const songTime = (s: Song) => s.updatedAt ?? s.createdAt;
-export const cardTime = (c: CardState) => c.updatedAt ?? c.lastReviewed ?? 0;
+export { cardTime };
 
 const songOf = (key: string) => key.slice(0, key.indexOf(":"));
 
@@ -69,18 +70,16 @@ export function mergeData(local: UserData, incoming: Partial<UserData>, { honorD
     if (!mine || songTime(song) > songTime(mine)) songs[song.id] = song;
     if (!honorDeletes) delete deleted[song.id];
   }
-  for (const [key, card] of Object.entries(incoming.cards ?? {})) {
-    const mine = cards[key];
-    if (!mine || cardTime(card) > cardTime(mine)) cards[key] = card;
-  }
+  // 옛 백업의 카드(노래id:단어)도 단어 하나에 카드 하나로 합친다.
+  for (const [key, card] of Object.entries(incoming.cards ?? {})) putCard(cards, key, card);
 
-  // 지운 뒤로 바뀐 적 없는 노래는 그 카드·해설과 함께 뺀다.
+  // 지운 뒤로 바뀐 적 없는 노래는 그 해설과 함께 뺀다. 카드는 다른 노래와 같이 쓰니 남긴다.
   if (honorDeletes) {
     for (const [id, at] of Object.entries(deleted)) {
       if (songs[id] && songTime(songs[id]) <= at) delete songs[id];
     }
-    for (const rec of [cards, explanations]) {
-      for (const key of Object.keys(rec)) if (!songs[songOf(key)] && deleted[songOf(key)]) delete rec[key];
+    for (const key of Object.keys(explanations)) {
+      if (!songs[songOf(key)] && deleted[songOf(key)]) delete explanations[key];
     }
   }
 

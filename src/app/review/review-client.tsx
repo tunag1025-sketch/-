@@ -12,6 +12,7 @@ import { SpeakButton } from "@/components/SpeakButton";
 import { Stat } from "@/components/Stat";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
+import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
 import { speak } from "@/lib/speech";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
 import { blankAnswer, makeChoices, pickQuizType, type QuizType, readingMatches } from "@/lib/quiz";
@@ -44,10 +45,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
   const order = useStore((s) => s.order);
   const grade = useStore((s) => s.grade);
   // 보기(오답)로 쓸 단어: 모은 단어 전체
-  const pool = useMemo(
-    () => order.flatMap((id) => (songs[id]?.status === "ready" ? songs[id].vocab : [])),
-    [songs, order],
-  );
+  const pool = useMemo(() => uniqueVocab(songs, order), [songs, order]);
 
   // 시작할 때의 목록을 고정한다. "다시"를 누른 카드는 뒤에 다시 붙인다.
   // 처음 배우는 단어는 '학습', 다시 보는 단어는 '복습'으로 보여 준다.
@@ -55,8 +53,8 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
     const { songs, order, cards, newLog, settings } = useStore.getState();
     const now = Date.now();
     const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
-    const ids = buildQueue(songs, order, cards, now, { songId, newLimit }).queue.map((v) => v.id);
-    return { initial: ids, fresh: new Set(ids.filter((id) => !cards[id])) };
+    const { queue } = buildQueue(songs, order, cards, now, { songId, newLimit });
+    return { initial: queue.map((v) => v.id), fresh: new Set(queue.filter((v) => !cardOf(cards, v)).map((v) => v.id)) };
   });
   const [queue, setQueue] = useState(initial);
   const [pos, setPos] = useState(0);
@@ -94,9 +92,10 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
   }
 
   function answer(g: Grade) {
-    const before = memoryOf(useStore.getState().cards[currentId]);
-    grade(currentId, g);
-    const after = memoryOf(useStore.getState().cards[currentId]);
+    const key = cardKey(current!.item);
+    const before = memoryOf(useStore.getState().cards[key]);
+    grade(key, g);
+    const after = memoryOf(useStore.getState().cards[key]);
     const wasLearned = before === "long";
     const nowLearned = after === "long";
     if (before === "none" && after === "short") setShortCount((n) => n + 1);
@@ -153,7 +152,7 @@ type Quiz =
   | { type: "choice" | "blank"; answer: string; choices: string[] };
 
 function makeQuiz(item: VocabItem, song: Song, pool: VocabItem[], enabled: QuizType[]): Quiz {
-  const isNew = !useStore.getState().cards[item.id];
+  const isNew = !cardOf(useStore.getState().cards, item);
   const type = pickQuizType(enabled, item, song, pool.length, isNew);
   if (type === "choice") {
     return { type, answer: item.word, choices: makeChoices(item, item.word, pool, (v) => v.word) };
@@ -196,7 +195,7 @@ function ReviewCard({
   onAnswer: (g: Grade) => void;
   onLearned: () => void;
 }) {
-  const card = useStore((s) => s.cards[item.id]);
+  const card = useStore((s) => cardOf(s.cards, item));
   const furigana = useStore((s) => s.settings.furigana);
   const quizTypes = useStore((s) => s.settings.quizTypes);
   const autoSpeak = useStore((s) => s.settings.autoSpeak);

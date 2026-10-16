@@ -1,3 +1,4 @@
+import { cardKey } from "./cards";
 import { isDue } from "./srs";
 import { dayKey } from "./stats";
 import type { CardState, Song, VocabItem } from "./types";
@@ -24,6 +25,7 @@ export function remainingNew(dailyNew: number, newLog: Record<string, number>, n
 /**
  * 학습할 카드 목록: 기한이 된 카드 먼저(오래된 순), 그다음 새 카드(최근 노래부터).
  * 장기기억 단어는 넣지 않는다. songId를 주면 그 노래 단어만.
+ * 여러 노래에 나오는 단어는 한 번만 넣는다 (카드를 같이 쓰니 다른 노래에서 배웠으면 새 단어가 아니다).
  */
 export function buildQueue(
   songs: Record<string, Song>,
@@ -34,17 +36,21 @@ export function buildQueue(
 ): { queue: VocabItem[]; dueCount: number; newCount: number; freshTotal: number } {
   const due: VocabItem[] = [];
   const fresh: VocabItem[] = [];
+  const seen = new Set<string>();
   for (const id of order) {
     if (opts.songId && id !== opts.songId) continue;
     const song = songs[id];
     if (!song || song.status !== "ready") continue;
     for (const item of song.vocab) {
-      const card = cards[item.id];
+      const key = cardKey(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const card = cards[key];
       if (!card) fresh.push(item);
       else if (isDue(card, now)) due.push(item);
     }
   }
-  due.sort((a, b) => cards[a.id].due - cards[b.id].due);
+  due.sort((a, b) => cards[cardKey(a)].due - cards[cardKey(b)].due);
   const newTaken = fresh.slice(0, opts.newLimit);
   return { queue: [...due, ...newTaken], dueCount: due.length, newCount: newTaken.length, freshTotal: fresh.length };
 }

@@ -1,4 +1,5 @@
-import { cardTime, type Settings, songTime, type UserData } from "./data";
+import { cardTime, putCard } from "./cards";
+import { type Settings, songTime, type UserData } from "./data";
 import type { CardState, LineExplanation, Song } from "./types";
 
 /**
@@ -33,7 +34,8 @@ export function allRefs(state: SyncState): Ref[] {
   const refs: Ref[] = [];
   for (const id of Object.keys(state.songs)) if (!skip(state, id)) refs.push(ref("song", id));
   for (const id of Object.keys(state.deleted)) refs.push(ref("song", id));
-  for (const key of Object.keys(state.cards)) if (state.songs[songIdOf(key)] && !skip(state, songIdOf(key))) refs.push(ref("card", key));
+  // 카드는 노래가 아니라 단어마다 하나라 데모곡 단어도 올린다.
+  for (const key of Object.keys(state.cards)) refs.push(ref("card", key));
   for (const key of Object.keys(state.explanations))
     if (state.songs[songIdOf(key)] && !skip(state, songIdOf(key))) refs.push(ref("expl", key));
   for (const day of Object.keys(state.reviewLog)) refs.push(ref("day", `r:${day}`));
@@ -59,7 +61,7 @@ export function changedRefs(next: SyncState, prev: SyncState): Ref[] {
   return refs.filter((r) => {
     const { kind, key } = parseRef(r);
     if (kind === "song") return !skip(next, key) && !prev.songs[key]?.isDemo;
-    if (kind === "card" || kind === "expl") return !skip(next, songIdOf(key));
+    if (kind === "expl") return !skip(next, songIdOf(key));
     return true;
   });
 }
@@ -94,7 +96,7 @@ export function toEntity(state: SyncState, r: Ref): Entity | null {
 
 /**
  * 서버에서 받은 항목을 지금 데이터에 반영한 새 상태. 더 나중에 바뀐 쪽을 남긴다.
- * 노래가 지워졌으면 그 노래의 카드·해설도 지운다.
+ * 노래가 지워졌으면 그 노래의 해설도 지운다. 카드는 다른 노래와 같이 쓰니 남긴다.
  */
 export function applyEntities(state: SyncState, entities: Entity[]): SyncState {
   const songs = { ...state.songs };
@@ -117,8 +119,8 @@ export function applyEntities(state: SyncState, entities: Entity[]): SyncState {
         delete deleted[e.key];
       }
     } else if (e.kind === "card") {
-      const mine = cards[e.key];
-      if (!mine || cardTime(mine) < e.updatedAt) cards[e.key] = e.data as CardState;
+      // 옛 기기가 올린 카드(노래id:단어)는 같은 단어 카드와 합친다.
+      putCard(cards, e.key, { ...(e.data as CardState), updatedAt: e.updatedAt });
     } else if (e.kind === "expl") {
       explanations[e.key] ??= e.data as LineExplanation;
     } else if (e.kind === "day") {
@@ -133,7 +135,7 @@ export function applyEntities(state: SyncState, entities: Entity[]): SyncState {
 
   for (const id of Object.keys(deleted)) {
     if (songs[id]) continue;
-    for (const rec of [cards, explanations]) for (const k of Object.keys(rec)) if (songIdOf(k) === id) delete rec[k];
+    for (const k of Object.keys(explanations)) if (songIdOf(k) === id) delete explanations[k];
   }
   const order = Object.values(songs)
     .sort((a, b) => b.createdAt - a.createdAt)

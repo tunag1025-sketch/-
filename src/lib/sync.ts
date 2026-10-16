@@ -9,12 +9,15 @@ import {
   chunkEntities,
   type Entity,
   type Ref,
+  ref,
   type SyncState,
   toEntity,
 } from "./sync-core";
 
 const META_KEY = "utango-sync";
-type Meta = { userId: string; cursor: number; dirty: Ref[] };
+/** 2: 카드를 단어마다 하나로 합친 뒤 (합친 카드를 한 번 모두 올린다) */
+const META_VERSION = 2;
+type Meta = { userId: string; cursor: number; dirty: Ref[]; v?: number };
 
 export type SyncStatus = "off" | "syncing" | "synced" | "offline" | "error";
 export const useSyncStatus = create<{ status: SyncStatus; lastSynced: number | null }>(() => ({
@@ -138,8 +141,12 @@ export function startSync(userId: string) {
   stopSync();
   meta = loadMeta();
   if (!meta || meta.userId !== userId) {
-    meta = { userId, cursor: 0, dirty: allRefs(toSync(useStore.getState())) };
+    meta = { userId, cursor: 0, dirty: allRefs(toSync(useStore.getState())), v: META_VERSION };
     saveMeta();
+  } else if ((meta.v ?? 1) < META_VERSION) {
+    // 이 기기에서 단어 열쇠로 바꾼 카드를 서버에도 올린다.
+    meta.v = META_VERSION;
+    markDirty(Object.keys(useStore.getState().cards).map((key) => ref("card", key)));
   }
   unsubscribe = useStore.subscribe((state, prev) => {
     if (applying) return;
