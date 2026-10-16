@@ -42,36 +42,36 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
   }, [key, explanation, attempt]);
 
   return (
-    <div className="mt-1 mb-4 rounded-[20px] bg-lav px-4 py-3.5 text-[15px] text-on-lav">
+    <div className="iris mt-1 mb-4 rounded-[20px] px-4 py-3.5 text-[15px]">
       {explanation ? (
         <div className="space-y-3">
           <p className="text-[16px] font-bold">{explanation.translation}</p>
           <ul className="space-y-1">
             {explanation.breakdown.map((b, i) => (
               <li key={i} className="flex gap-3">
-                <span className="font-jp shrink-0 rounded-lg bg-surface/70 px-2 font-semibold">{b.part}</span>
-                <span className="opacity-80">{b.meaning}</span>
+                <span className="font-jp shrink-0 rounded-lg bg-surface/80 px-2 font-semibold text-blue">{b.part}</span>
+                <span className="text-ink-2">{b.meaning}</span>
               </li>
             ))}
           </ul>
-          {explanation.notes && <p className="leading-relaxed opacity-80">{explanation.notes}</p>}
+          {explanation.notes && <p className="leading-relaxed text-ink-2">{explanation.notes}</p>}
         </div>
       ) : error ? (
         <div>
-          <p className="opacity-80">{error}</p>
+          <p className="text-ink-2">{error}</p>
           <button
             type="button"
             onClick={() => {
               setError(null);
               setAttempt((n) => n + 1);
             }}
-            className="mt-1.5 flex items-center gap-1.5 font-bold"
+            className="mt-1.5 flex items-center gap-1.5 font-semibold text-blue"
           >
             <Icon name="refresh" className="size-4" /> 다시 시도
           </button>
         </div>
       ) : (
-        <p className="flex items-center gap-2 opacity-70">
+        <p className="flex items-center gap-2 text-ink-3">
           <Spinner /> 이 줄을 해설하는 중…
         </p>
       )}

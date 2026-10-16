@@ -1,51 +1,60 @@
 @import "tailwindcss";
 
 /*
- * Layout: 한 손으로 넘겨 보는 모바일 학습 대시보드. 밝은 회청색 바탕 위에 흰 카드,
- * 중요한 숫자는 블루 타일 하나로 강조하고, 행동 버튼은 검정 알약 + 라임 원.
+ * Layout: 하얀 바탕 위에 부드러운 카드, 제목 둘째 줄은 블루→바이올렛→핑크 그라데이션,
+ * 캐릭터 넷(음표·피크·말풍선·하트)이 감정과 상태를 맡는다. 탭바는 떠 있는 유리 동그라미 + 파란 + 버튼.
  */
 :root {
-  --bg: #f4f5f9;
+  --bg: #f7f8fc;
   --surface: #ffffff;
-  --muted: #eceef5;
-  --line: #e3e5ee;
-  --ink: #17161b;
-  --ink-2: #4f4e5a;
-  --ink-3: #8f8e9c;
-  --blue: #3760f9;
-  --on-blue: #ffffff;
-  --blue-soft: #e4eaff;
-  --lime: #d2fc59;
-  --on-lime: #17161b;
-  --lav: #dad9fb;
-  --on-lav: #17161b;
-  --solid: #17161b;
-  --on-solid: #ffffff;
-  --danger: #d93a40;
-  --danger-soft: #fde4e4;
-  --mark: #dad9fb;
-  --mark-ink: inherit;
+  --muted: #f1f3f8;
+  --line: #e6e9f2;
+  --ink: #15171f;
+  --ink-2: #545869;
+  --ink-3: #989cad;
+  --blue: #1f6bff;
+  --blue-soft: #eaf1ff;
+  --violet: #8b6cff;
+  --pink: #ff5c97;
+  --yellow: #ffb81f;
+  --danger: #e5484d;
+  --mark: #dde8ff;
+  --mark-ink: #0f47c7;
+  --grad-text: linear-gradient(90deg, #1f6bff 0%, #7d7cff 52%, #ff9fc6 100%);
+  --grad-soft: linear-gradient(120deg, #e8f1ff 0%, #f0ebff 52%, #ffe9f2 100%);
+  --grad-edge: linear-gradient(120deg, #a9c9ff, #cdbdff 52%, #ffc6dc);
+  --grad-btn: linear-gradient(180deg, #5591ff 0%, #1f6bff 100%);
+  --shadow: 0 6px 24px rgb(31 59 120 / 0.07);
+  --glass: rgb(255 255 255 / 0.72);
+  --glass-edge: rgb(255 255 255 / 0.9);
+  --top-glow: #e1edff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e0e12;
-    --surface: #18181f;
-    --muted: #23232c;
-    --line: #2b2b35;
-    --ink: #f3f3f7;
-    --ink-2: #bdbcc8;
-    --ink-3: #7f7e8c;
-    --blue: #4b6fff;
-    --blue-soft: #1d2550;
-    --lav: #2f2d58;
-    --on-lav: #e6e5ff;
-    --solid: #f3f3f7;
-    --on-solid: #17161b;
+    --bg: #0c0e15;
+    --surface: #151824;
+    --muted: #1d2130;
+    --line: #272c3d;
+    --ink: #f2f4fa;
+    --ink-2: #b4b9cb;
+    --ink-3: #7b8194;
+    --blue: #4a86ff;
+    --blue-soft: #1a2647;
+    --violet: #a08bff;
+    --pink: #ff74a8;
+    --yellow: #ffcd5a;
     --danger: #ff6b6f;
-    --danger-soft: #3a1c1f;
-    --mark: #3b3a78;
-    --mark-ink: #ecebff;
+    --mark: #22336a;
+    --mark-ink: #d3e2ff;
+    --grad-text: linear-gradient(90deg, #6ea0ff 0%, #a79dff 52%, #ffaccd 100%);
+    --grad-soft: linear-gradient(120deg, #16213d 0%, #201b3a 52%, #2c1929 100%);
+    --grad-edge: linear-gradient(120deg, #34518f, #4b3f87 52%, #7a3d5c);
+    --grad-btn: linear-gradient(180deg, #5f95ff 0%, #2f6dff 100%);
+    --shadow: 0 6px 24px rgb(0 0 0 / 0.35);
+    --glass: rgb(28 32 46 / 0.72);
+    --glass-edge: rgb(255 255 255 / 0.08);
+    --top-glow: #15213f;
     color-scheme: dark;
   }
 }
@@ -59,17 +68,12 @@
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-blue: var(--blue);
-  --color-on-blue: var(--on-blue);
   --color-blue-soft: var(--blue-soft);
-  --color-lime: var(--lime);
-  --color-on-lime: var(--on-lime);
-  --color-lav: var(--lav);
-  --color-on-lav: var(--on-lav);
-  --color-solid: var(--solid);
-  --color-on-solid: var(--on-solid);
+  --color-violet: var(--violet);
+  --color-pink: var(--pink);
+  --color-yellow: var(--yellow);
   --color-danger: var(--danger);
-  --color-danger-soft: var(--danger-soft);
-  /* 본문·한글: Pretendard / 숫자·영문 제목: Outfit / 가사·일본어: 시스템 일본어 고딕 */
+  /* 한글·본문: Pretendard / 영문·숫자: Outfit / 가사·일본어: 시스템 일본어 고딕 */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Hiragino Sans", "Noto Sans KR", "Noto Sans JP", sans-serif;
   --font-display: "Outfit Variable", "Pretendard Variable", -apple-system, sans-serif;
@@ -82,10 +86,12 @@ html {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(130% 420px at 50% -120px, var(--top-glow) 0%, transparent 70%) no-repeat,
+    var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 h1,
@@ -94,9 +100,11 @@ h3 {
   text-wrap: balance;
 }
 
-:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
 }
 
 ruby {
@@ -119,58 +127,145 @@ rt {
   padding-top: env(safe-area-inset-top);
 }
 
-/* 큰 숫자: 기하학적 산세리프 + 자릿수 정렬 */
 @utility num {
   font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
 }
 
-/* 누르면 살짝 작아지는 버튼 */
+/* 제목 둘째 줄 같은 그라데이션 글씨 */
+@utility grad-text {
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+
+/* 무지갯빛 테두리 카드 */
+@utility iris-card {
+  border: 1.5px solid transparent;
+  border-radius: 24px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--grad-edge) border-box;
+  box-shadow: var(--shadow);
+}
+
+@utility iris {
+  background: var(--grad-soft);
+}
+
+@utility btn-primary {
+  background: var(--grad-btn);
+  color: #ffffff;
+  border-radius: 9999px;
+  box-shadow:
+    0 8px 20px rgb(31 107 255 / 0.28),
+    inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+@utility btn-ghost {
+  background: var(--surface);
+  color: var(--blue);
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+}
+
+@utility glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+}
+
 @utility press {
   transition: transform 120ms ease-out;
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.96);
   }
 }
 
 @utility input {
   width: 100%;
-  border-radius: 1.125rem;
-  border: 1.5px solid transparent;
-  background: var(--muted);
+  border-radius: 18px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
   padding: 0.85rem 1rem;
   font-size: 16px;
   outline: none;
   transition:
     border-color 120ms,
-    background-color 120ms;
-  &:focus {
+    box-shadow 120ms;
+  &:focus,
+  &:focus-visible {
     border-color: var(--blue);
-    background: var(--surface);
+    box-shadow: 0 0 0 4px var(--blue-soft);
+    outline: none;
   }
   &::placeholder {
     color: var(--ink-3);
   }
 }
 
-/* 가사 속 단어장 단어: 라벤더 형광펜. 후리가나는 빼고 본문 글자 아래쪽만 칠한다. */
+/* 선택 칩: 테두리만 있다가 고르면 파란 테두리 + 연한 파랑 */
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  padding: 0.5rem 0.95rem;
+  font-size: 14px;
+  font-weight: 500;
+  &[aria-pressed="true"],
+  &[aria-selected="true"] {
+    border-color: var(--blue);
+    background: var(--blue-soft);
+    color: var(--blue);
+    font-weight: 600;
+  }
+}
+
+/* 가사 속 단어장 단어: 연한 파랑 형광펜. 후리가나는 빼고 본문 글자 아래쪽만 칠한다. */
 .vocab-word {
   color: var(--mark-ink);
   text-decoration-line: underline;
   text-decoration-color: var(--mark);
-  text-decoration-thickness: 0.45em;
-  text-underline-offset: -0.32em;
+  text-decoration-thickness: 0.48em;
+  text-underline-offset: -0.34em;
   text-decoration-skip-ink: none;
 }
 
 /* 복습 카드에서 가린 단어 */
 .focus-word {
-  background: var(--blue);
-  color: var(--on-blue);
+  background: var(--grad-btn);
+  color: #ffffff;
   border-radius: 6px;
   padding: 0 0.15em;
   font-weight: 700;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-6px) rotate(var(--tilt, 0deg));
+  }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -178,6 +273,6 @@ rt {
   *::before,
   *::after {
     transition-duration: 0ms !important;
-    animation-duration: 0ms !important;
+    animation: none !important;
   }
 }

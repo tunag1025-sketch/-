@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon } from "@/components/Icon";
-import { PageTitle } from "@/components/PageHeader";
+import { Mascot } from "@/components/Mascots";
+import { Headline } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
@@ -44,13 +45,16 @@ function VocabList() {
   const due = all.filter((v) => cards[v.id] && isDue(cards[v.id], now)).length;
 
   return (
-    <div className="space-y-5">
-      <PageTitle title="단어장" sub="노래에서 모은 단어" />
+    <div className="space-y-5 pt-5">
+      <div className="flex items-end justify-between gap-3">
+        <Headline first="노래에서 모은" second="나의 단어장" />
+        <Mascot kind="bubble" className="float size-16 shrink-0" style={{ "--tilt": "8deg" } as React.CSSProperties} />
+      </div>
 
-      <div className="grid grid-cols-3 gap-2.5">
-        <Stat label="전체" value={all.length} tone="bg-surface" />
-        <Stat label="외운 단어" value={learned} tone="bg-lav text-on-lav" />
-        <Stat label="복습 대기" value={due} tone="bg-surface" />
+      <div className="card grid grid-cols-3 py-4">
+        <Stat value={all.length} label="모은 단어" />
+        <Stat value={learned} label="외운 단어" />
+        <Stat value={due} label="복습 대기" />
       </div>
 
       <div className="relative">
@@ -63,7 +67,7 @@ function VocabList() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="단어, 읽는 법, 뜻으로 찾기"
-          className="font-jp input rounded-full bg-surface pl-11"
+          className="font-jp input rounded-full pl-11"
         />
       </div>
 
@@ -75,9 +79,7 @@ function VocabList() {
               type="button"
               onClick={() => setSongFilter(id)}
               aria-pressed={songFilter === id}
-              className={`press font-jp shrink-0 rounded-full px-4 py-2.5 text-[14px] font-semibold ${
-                songFilter === id ? "bg-lime text-on-lime" : "bg-surface text-ink-2"
-              }`}
+              className="chip press font-jp shrink-0"
             >
               {label}
             </button>
@@ -86,11 +88,14 @@ function VocabList() {
       )}
 
       {items.length === 0 ? (
-        <p className="py-16 text-center text-[14px] text-ink-3">
-          {all.length === 0 ? "노래를 추가하면 여기에 단어가 모여요." : "찾는 단어가 없어요."}
-        </p>
+        <div className="flex flex-col items-center py-12 text-center">
+          <Mascot kind={all.length === 0 ? "note" : "bubble"} className="size-16" />
+          <p className="mt-3 text-[14px] text-ink-3">
+            {all.length === 0 ? "노래를 추가하면 여기에 단어가 모여요." : "찾는 단어가 없어요."}
+          </p>
+        </div>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-[28px] bg-surface">
+        <ul className="card divide-y divide-line overflow-hidden">
           {items.map((v) => (
             <VocabRow
               key={v.id}
@@ -110,11 +115,11 @@ function VocabList() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
+function Stat({ value, label }: { value: number; label: string }) {
   return (
-    <div className={`rounded-[22px] px-3.5 py-3 ${tone}`}>
-      <p className="num text-[26px] leading-none font-semibold">{value}</p>
-      <p className="mt-1.5 text-[12px] font-medium opacity-70">{label}</p>
+    <div className="text-center">
+      <p className="num text-[28px] leading-none font-medium">{value}</p>
+      <p className="grad-text mt-1.5 text-[13px] font-semibold">{label}</p>
     </div>
   );
 }

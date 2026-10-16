@@ -33,7 +33,7 @@ export function VocabDetail({ item, song, showHeading = true }: { item: VocabIte
       <div>
         <div className="mb-2.5 flex flex-wrap gap-1.5">
           <Badge>{item.pos}</Badge>
-          {item.jlpt !== "기타" && <Badge tone="lime">JLPT {item.jlpt}</Badge>}
+          {item.jlpt !== "기타" && <Badge tone="blue">JLPT {item.jlpt}</Badge>}
         </div>
         <p className="text-[21px] leading-snug font-bold">{item.meaning}</p>
         {item.note && <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{item.note}</p>}
@@ -44,7 +44,7 @@ export function VocabDetail({ item, song, showHeading = true }: { item: VocabIte
           <SectionLabel>노래 속에서</SectionLabel>
           <ul className="space-y-2">
             {item.lines.map((n) => (
-              <li key={n} className="rounded-2xl bg-muted px-4 py-3 text-[17px] leading-[2.2]">
+              <li key={n} className="iris rounded-2xl px-4 py-3 text-[17px] leading-[2.2]">
                 <LyricLineView line={song.lines[n]} index={n} vocab={[item]} focusId={item.id} furigana={furigana} />
               </li>
             ))}
@@ -71,9 +71,8 @@ export function VocabDetail({ item, song, showHeading = true }: { item: VocabIte
       <button
         type="button"
         onClick={() => setSuspended(item.id, !suspended)}
-        className={`press flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-3.5 text-[15px] font-semibold ${
-          suspended ? "bg-lime text-on-lime" : "bg-muted text-ink-2"
-        }`}
+        aria-pressed={suspended}
+        className="press btn-ghost flex w-full items-center justify-center gap-1.5 px-4 py-3.5 text-[15px] font-semibold aria-pressed:border-blue aria-pressed:bg-blue-soft"
       >
         {suspended ? (
           <>

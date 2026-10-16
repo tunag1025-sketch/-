@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
-import { ArrowDot, Icon } from "@/components/Icon";
+import { Icon } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
-import { CircleLink } from "@/components/PageHeader";
+import { Mascot, MascotGroup, type MascotKind, Twinkle } from "@/components/Mascots";
+import { CircleLink, Headline } from "@/components/PageHeader";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { buildQueue } from "@/lib/review";
 import { intervalLabel, newCard } from "@/lib/srs";
@@ -14,11 +15,12 @@ import { streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 import type { Grade } from "@/lib/types";
 
-const GRADES: { grade: Grade; label: string; className: string }[] = [
-  { grade: "again", label: "다시", className: "bg-danger-soft text-danger" },
-  { grade: "hard", label: "어려움", className: "bg-lav text-on-lav" },
-  { grade: "good", label: "알맞음", className: "bg-blue text-on-blue" },
-  { grade: "easy", label: "쉬움", className: "bg-lime text-on-lime" },
+// 답은 캐릭터 표정으로 고른다: 뾰로통(다시) · 졸림(어려움) · 기분 좋음(알맞음) · 신남(쉬움)
+const GRADES: { grade: Grade; label: string; mascot: MascotKind }[] = [
+  { grade: "again", label: "다시", mascot: "heart" },
+  { grade: "hard", label: "어려움", mascot: "bubble" },
+  { grade: "good", label: "알맞음", mascot: "note" },
+  { grade: "easy", label: "쉬움", mascot: "pick" },
 ];
 
 export function ReviewClient() {
@@ -70,24 +72,30 @@ function ReviewSession({ songId }: { songId?: string }) {
   }
 
   return (
-    <div className="pt-3">
-      <header className="flex items-center gap-3">
-        <CircleLink href={exitHref} icon="close" label="복습 그만하기" />
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
-          <div className="h-full rounded-full bg-blue transition-all" style={{ width: `${(pos / queue.length) * 100}%` }} />
+    <div className={revealed ? "pb-56" : "pb-24"}>
+      <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div>
+          <CircleLink href={exitHref} icon="close" label="복습 그만하기" />
         </div>
-        <span className="num w-14 text-right text-[14px] font-semibold text-ink-3">
+        <span className="text-[16px] font-semibold">복습</span>
+        <span className="num text-right text-[14px] font-semibold text-ink-3">
           {pos + 1}/{queue.length}
         </span>
       </header>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-[image:var(--grad-text)] transition-all"
+          style={{ width: `${(pos / queue.length) * 100}%` }}
+        />
+      </div>
 
-      <article className="mt-5 rounded-[32px] bg-surface px-5 pt-5 pb-8">
+      <article className="iris-card relative mt-5 overflow-hidden px-5 pt-5 pb-8">
         <p className="font-jp flex items-center gap-1.5 truncate text-[13px] font-medium text-ink-3">
           <Icon name="music" className="size-3.5 shrink-0" />
           {song.title}
         </p>
         {contextLine !== undefined && song.lines[contextLine] && (
-          <p className="mt-3 rounded-2xl bg-muted px-4 py-2 text-[17px] leading-[2.3]">
+          <p className="iris mt-3 rounded-2xl px-4 py-2 text-[17px] leading-[2.3]">
             <LyricLineView
               line={song.lines[contextLine]}
               index={contextLine}
@@ -107,38 +115,44 @@ function ReviewSession({ songId }: { songId?: string }) {
             </>
           )}
         </div>
+        <Twinkle color="#a9c9ff" className="absolute top-4 right-5 size-4" />
       </article>
 
       {revealed && (
-        <div className="mt-3 rounded-[32px] bg-surface px-5 py-5">
+        <div className="card mt-3 px-5 py-5">
           <VocabDetail item={item} showHeading={false} />
         </div>
       )}
 
-      <div className="pb-safe fixed inset-x-0 bottom-0 z-30 bg-bg/90 backdrop-blur-md">
-        <div className="mx-auto max-w-xl px-4 pt-3 pb-3">
+      <div className="pb-safe fixed inset-x-0 bottom-0 z-30">
+        <div className="mx-auto max-w-xl px-4 pb-4">
           {revealed ? (
-            <div className="grid grid-cols-4 gap-2">
-              {GRADES.map((g) => (
-                <button
-                  key={g.grade}
-                  type="button"
-                  onClick={() => answer(g.grade)}
-                  className={`press rounded-[20px] px-1 py-3 text-center ${g.className}`}
-                >
-                  <div className="text-[15px] font-bold">{g.label}</div>
-                  <div className="num mt-0.5 text-[12px] font-medium opacity-75">{intervalLabel(card, g.grade, now)}</div>
-                </button>
-              ))}
+            <div className="rounded-[28px] border border-line bg-surface px-4 pt-4 pb-3 shadow-[0_-8px_30px_rgb(31_59_120/0.10)]">
+              <p className="text-center text-[15px] font-semibold">
+                이 단어, <span className="grad-text">어땠어요?</span>
+              </p>
+              <div className="iris mt-3 grid grid-cols-4 rounded-[22px] px-1 pt-2 pb-2.5">
+                {GRADES.map((g) => (
+                  <button
+                    key={g.grade}
+                    type="button"
+                    onClick={() => answer(g.grade)}
+                    className="press flex flex-col items-center gap-0.5 rounded-2xl py-1"
+                  >
+                    <Mascot kind={g.mascot} className="size-12" />
+                    <span className="mt-0.5 text-[14px] font-semibold">{g.label}</span>
+                    <span className="num text-[12px] text-ink-3">{intervalLabel(card, g.grade, now)}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => setRevealed(true)}
-              className="press flex w-full items-center justify-between rounded-full bg-solid py-2 pr-2 pl-6 text-[16px] font-semibold text-on-solid"
+              className="btn-primary press flex w-full items-center justify-center py-4 text-[16px] font-semibold"
             >
               뜻 보기
-              <ArrowDot />
             </button>
           )}
         </div>
@@ -163,40 +177,38 @@ function Finished({
   const days = streak(reviewLog, now);
 
   return (
-    <div className="pt-16">
-      <span
-        className={`mx-auto grid size-20 place-items-center rounded-full ${empty ? "bg-surface text-ink-3" : "bg-lime text-on-lime"}`}
-      >
-        <Icon name={empty ? "cards" : "check"} className="size-9" />
-      </span>
-      <h1 className="mt-5 text-center text-[24px] font-bold">{empty ? "지금 복습할 단어가 없어요" : "오늘 복습 끝!"}</h1>
-      <p className="mt-1.5 text-center text-[15px] text-ink-3">
+    <div className="flex flex-col items-center pt-14 text-center">
+      {empty ? <Mascot kind="bubble" className="float size-24" /> : <MascotGroup className="float w-44" />}
+      <Headline
+        className="mt-6 text-[28px]"
+        first={empty ? "지금은" : "오늘 복습"}
+        second={empty ? "쉬어도 돼요" : "완료했어요!"}
+      />
+      <p className="mt-2 text-[15px] text-ink-3">
         {empty
           ? "노래를 추가하거나 다음 복습 시간이 되면 카드가 생겨요."
           : `${songTitle ? `'${songTitle}' ` : ""}단어를 모두 복습했어요.`}
       </p>
       {!empty && (
-        <div className="mt-7 grid grid-cols-2 gap-3">
-          <div className="rounded-[28px] bg-blue px-4 py-4 text-on-blue">
-            <p className="text-[13px] opacity-80">복습한 단어</p>
-            <p className="num mt-1.5 text-[36px] leading-none font-semibold">{total}</p>
+        <div className="card mt-7 grid w-full grid-cols-2 py-5">
+          <div>
+            <p className="num text-[34px] leading-none font-medium">{total}</p>
+            <p className="grad-text mt-1.5 text-[13px] font-semibold">복습한 단어</p>
           </div>
-          <div className="rounded-[28px] bg-surface px-4 py-4">
-            <p className="text-[13px] text-ink-3">연속 학습</p>
-            <p className="num mt-1.5 text-[36px] leading-none font-semibold">
-              {days}
-              <span className="ml-0.5 text-[16px] font-medium">일</span>
-            </p>
+          <div>
+            <p className="num text-[34px] leading-none font-medium">{days}</p>
+            <p className="grad-text mt-1.5 text-[13px] font-semibold">일 연속</p>
           </div>
         </div>
       )}
-      <Link
-        href={exitHref}
-        className="press mt-7 flex items-center justify-between rounded-full bg-solid py-2 pr-2 pl-6 text-[16px] font-semibold text-on-solid"
-      >
-        {exitHref === "/" ? "홈으로" : "노래로 돌아가기"}
-        <ArrowDot />
-      </Link>
+      <div className="mt-7 grid w-full grid-cols-2 gap-2.5">
+        <Link href="/vocab" className="btn-ghost press py-3.5 text-[15px] font-semibold">
+          단어장 보기
+        </Link>
+        <Link href={exitHref} className="btn-primary press py-3.5 text-[15px] font-semibold">
+          {exitHref === "/" ? "홈으로" : "노래로"}
+        </Link>
+      </div>
     </div>
   );
 }

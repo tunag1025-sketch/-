@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
-import { ArrowDot } from "@/components/Icon";
-import { TopBar } from "@/components/PageHeader";
+import { Mascot } from "@/components/Mascots";
+import { Headline, TopBar } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
 import { startAnalysis, tokenize } from "@/lib/api-client";
 import { cleanLyrics } from "@/lib/lyrics";
@@ -75,17 +75,19 @@ function NewSongForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6">
+    <form onSubmit={submit} className="space-y-6 pb-4">
       <TopBar backHref="/" title="노래 추가" />
 
-      <div>
-        <h1 className="text-[26px] leading-tight font-bold tracking-[-0.03em]">어떤 노래로 공부할까요?</h1>
-        <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">
-          가사를 붙여넣으면 내 수준에 맞는 단어장과 예문을 만들어 드려요.
+      <div className="flex items-center gap-3">
+        <Mascot kind="pick" className="float size-14 shrink-0" style={{ "--tilt": "-8deg" } as React.CSSProperties} />
+        <p className="rounded-2xl rounded-bl-md bg-surface px-3.5 py-2 text-[14px] font-medium text-ink-2 shadow-[var(--shadow)]">
+          가사만 붙여넣으면 나머지는 제가 할게요!
         </p>
       </div>
 
-      <div className="space-y-4 rounded-[28px] bg-surface p-4">
+      <Headline className="text-[28px]" first="어떤 노래로" second="공부해 볼까요?" />
+
+      <div className="space-y-4">
         <Field label="노래 제목" htmlFor="title">
           <input
             id="title"
@@ -111,16 +113,14 @@ function NewSongForm() {
 
       <fieldset>
         <legend className="mb-2.5 text-[15px] font-semibold">내 일본어 수준</legend>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-6 gap-1.5">
           {LEVELS.map((l) => (
             <button
               key={l}
               type="button"
               onClick={() => setLevel(l)}
               aria-pressed={level === l}
-              className={`press num rounded-full px-4 py-2.5 text-[15px] font-semibold ${
-                level === l ? "bg-lime text-on-lime" : "bg-surface text-ink-2"
-              }`}
+              className="chip press num justify-center px-0 text-[15px]"
             >
               {l}
             </button>
@@ -137,28 +137,29 @@ function NewSongForm() {
           onPaste={onPaste}
           placeholder={"가사를 그대로 붙여넣어 주세요.\n\n例)\n夜明け前の空に 小さな星がひとつ\n眠れない僕は 窓を開けて君を思う"}
           rows={12}
-          className="font-jp input min-h-[16rem] resize-y bg-surface text-[16px] leading-relaxed"
+          className="font-jp input min-h-[16rem] resize-y text-[16px] leading-relaxed"
           required
         />
         <p className="mt-2 text-[13px] text-ink-3">가사는 이 기기에만 저장되고, 단어장을 만들 때만 AI에 보내져요.</p>
       </Field>
 
-      {error && <p className="rounded-2xl bg-danger-soft px-4 py-3 text-[14px] font-medium text-danger">{error}</p>}
+      {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-[14px] font-medium text-danger">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={!canSubmit}
-        className="press flex w-full items-center justify-between gap-2 rounded-full bg-solid py-2 pr-2 pl-6 text-[16px] font-semibold text-on-solid disabled:opacity-35"
-      >
-        {busy ? (
-          <span className="flex items-center gap-2">
-            <Spinner /> 가사 읽는 중…
-          </span>
-        ) : (
-          "단어장 만들기"
-        )}
-        <ArrowDot />
-      </button>
+      <div className="pb-safe sticky bottom-0 -mx-4 bg-gradient-to-t from-bg via-bg to-transparent px-4 pt-6 pb-4">
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="btn-primary press flex w-full items-center justify-center gap-2 py-4 text-[16px] font-semibold disabled:opacity-40 disabled:shadow-none"
+        >
+          {busy ? (
+            <>
+              <Spinner /> 가사 읽는 중…
+            </>
+          ) : (
+            "단어장 만들기"
+          )}
+        </button>
+      </div>
     </form>
   );
 }

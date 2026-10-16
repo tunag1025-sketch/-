@@ -1,8 +1,7 @@
 const TONE = {
   muted: "bg-muted text-ink-2",
-  lime: "bg-lime text-on-lime",
-  lav: "bg-lav text-on-lav",
-  blue: "bg-blue text-on-blue",
+  blue: "bg-blue-soft text-blue",
+  solid: "bg-blue text-white",
 } as const;
 
 /** 작은 알약 라벨 */

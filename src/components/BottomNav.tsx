@@ -5,37 +5,47 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 
 const TABS: { href: string; label: string; icon: IconName; match: (p: string) => boolean }[] = [
-  { href: "/", label: "노래", icon: "music", match: (p) => p === "/" || p.startsWith("/songs") },
+  { href: "/", label: "홈", icon: "home", match: (p) => p === "/" || (p.startsWith("/songs") && p !== "/songs/new") },
   { href: "/review", label: "복습", icon: "cards", match: (p) => p.startsWith("/review") },
   { href: "/vocab", label: "단어장", icon: "book", match: (p) => p.startsWith("/vocab") },
 ];
 
-/** 화면 아래 떠 있는 알약 탭바 */
+/** 떠 있는 유리 동그라미 탭 + 파란 노래 추가 버튼 */
 export function BottomNav() {
   const pathname = usePathname();
-  // 복습 중에는 화면 아래를 답 버튼에 내준다.
-  if (pathname.startsWith("/review")) return null;
+  // 복습과 노래 추가 화면은 아래쪽을 자기 버튼에 쓴다.
+  if (pathname.startsWith("/review") || pathname === "/songs/new") return null;
   return (
-    <nav className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4">
-      <ul className="pointer-events-auto mx-auto mb-3 flex max-w-sm gap-1 rounded-full bg-solid p-1.5 shadow-[0_10px_30px_rgb(23_22_27/0.22)]">
-        {TABS.map((tab) => {
-          const active = tab.match(pathname);
-          return (
-            <li key={tab.href} className="flex-1">
-              <Link
-                href={tab.href}
-                aria-current={active ? "page" : undefined}
-                className={`flex items-center justify-center gap-1.5 rounded-full py-3 text-[13px] font-semibold transition-colors ${
-                  active ? "bg-lime text-on-lime" : "text-on-solid/60"
-                }`}
-              >
-                <Icon name={tab.icon} className="size-[18px]" />
-                {tab.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <nav className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-30 px-5" aria-label="메뉴">
+      <div className="mx-auto mb-4 flex max-w-sm items-center justify-between">
+        <ul className="glass pointer-events-auto flex gap-1.5 rounded-full p-1.5 shadow-[0_10px_30px_rgb(31_59_120/0.14)]">
+          {TABS.map((tab) => {
+            const active = tab.match(pathname);
+            return (
+              <li key={tab.href}>
+                <Link
+                  href={tab.href}
+                  aria-label={tab.label}
+                  aria-current={active ? "page" : undefined}
+                  className={`press flex h-12 items-center justify-center gap-1.5 rounded-full text-[14px] font-semibold transition-all ${
+                    active ? "bg-surface px-4 text-blue shadow-[0_2px_10px_rgb(31_59_120/0.12)]" : "w-12 text-ink-3"
+                  }`}
+                >
+                  <Icon name={tab.icon} className="size-[21px]" />
+                  {active && tab.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <Link
+          href="/songs/new"
+          aria-label="노래 추가"
+          className="btn-primary press pointer-events-auto grid size-[60px] place-items-center"
+        >
+          <Icon name="plus" className="size-7" />
+        </Link>
+      </div>
     </nav>
   );
 }

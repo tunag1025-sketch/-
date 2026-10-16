@@ -30,15 +30,15 @@ export function Sheet({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal>
-      <button aria-label="닫기" className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="pb-safe relative max-h-[88dvh] w-full max-w-xl overflow-y-auto rounded-t-[32px] bg-surface sm:rounded-[32px]">
+      <button aria-label="닫기" className="absolute inset-0 bg-[rgb(20_24_40/0.45)] backdrop-blur-[3px]" onClick={onClose} />
+      <div className="pb-safe relative max-h-[88dvh] w-full max-w-xl overflow-y-auto rounded-t-[30px] bg-surface sm:rounded-[30px]">
         <div className="sticky top-0 z-10 bg-surface px-5 pt-3 pb-2">
           <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line" />
           <div className="flex items-center justify-between gap-3">
             <span className="font-jp truncate text-[13px] font-medium text-ink-3">{title}</span>
             <button
               onClick={onClose}
-              className="press grid size-9 shrink-0 place-items-center rounded-full bg-muted"
+              className="press grid size-9 shrink-0 place-items-center rounded-full bg-muted text-ink-2"
               aria-label="닫기"
             >
               <Icon name="close" className="size-4" />

@@ -9,6 +9,8 @@ const PATHS = {
   sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z",
   trash: "M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
   check: "M5 13l4 4L19 7",
+  chevron: "M9 6l6 6-6 6",
+  home: "M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-8.5Z",
   search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm10 2-4.35-4.35",
   close: "M6 6l12 12M18 6L6 18",
   refresh: "M4 4v6h6M20 20v-6h-6M5.6 15A8 8 0 0 0 19 17M18.4 9A8 8 0 0 0 5 7",
@@ -32,14 +34,5 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
     >
       <path d={PATHS[name]} />
     </svg>
-  );
-}
-
-/** 검정 알약 버튼 오른쪽 끝의 라임 원 화살표 */
-export function ArrowDot({ className = "" }: { className?: string }) {
-  return (
-    <span className={`grid size-10 shrink-0 place-items-center rounded-full bg-lime text-on-lime ${className}`}>
-      <Icon name="arrow" className="size-[18px]" />
-    </span>
   );
 }

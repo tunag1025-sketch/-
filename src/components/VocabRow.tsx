@@ -33,11 +33,11 @@ export function VocabRow({
         </div>
         <div className="shrink-0">
           {suspended ? (
-            <span className="grid size-7 place-items-center rounded-full bg-lime text-on-lime" aria-label="외운 단어">
+            <span className="btn-primary grid size-7 place-items-center" aria-label="외운 단어">
               <Icon name="check" className="size-4" />
             </span>
           ) : (
-            item.jlpt !== "기타" && <Badge tone="lav">{item.jlpt}</Badge>
+            item.jlpt !== "기타" && <Badge tone="blue">{item.jlpt}</Badge>
           )}
         </div>
       </button>

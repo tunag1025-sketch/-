@@ -4,17 +4,20 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon } from "@/components/Icon";
+import { Mascot, MascotGroup } from "@/components/Mascots";
+import { Headline } from "@/components/PageHeader";
+import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
 import { useInFlight } from "@/lib/api-client";
 import { buildQueue } from "@/lib/review";
 import { isLearned } from "@/lib/srs";
 import { greeting, lastDays, streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
-import { toneFor } from "@/lib/tone";
 import type { CardState, Song } from "@/lib/types";
 import { useAiStatus } from "@/lib/use-ai-status";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+type Filter = "all" | "studying" | "done";
 
 export function HomeClient() {
   return (
@@ -31,6 +34,7 @@ function Home() {
   const reviewLog = useStore((s) => s.reviewLog);
   const ai = useAiStatus();
   const [now] = useState(Date.now);
+  const [filter, setFilter] = useState<Filter>("all");
 
   const { queue, dueCount, newCount } = useMemo(
     () => buildQueue(songs, order, cards, now),
@@ -42,133 +46,168 @@ function Home() {
   );
   const learned = allVocab.filter((v) => isLearned(cards[v.id])).length;
   const week = lastDays(reviewLog, now, 7);
-  const weekTotal = week.reduce((n, d) => n + d.count, 0);
-  const weekMax = Math.max(1, ...week.map((d) => d.count));
   const days = streak(reviewLog, now);
 
+  const progress = (song: Song) => {
+    const total = song.vocab.length;
+    const done = song.vocab.filter((v) => isLearned(cards[v.id])).length;
+    return { total, done };
+  };
+  const visible = order.filter((id) => {
+    const song = songs[id];
+    if (!song) return false;
+    if (filter === "all") return true;
+    const { total, done } = progress(song);
+    const finished = song.status === "ready" && total > 0 && done === total;
+    return filter === "done" ? finished : !finished;
+  });
+
   return (
-    <div className="space-y-7 pt-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[15px] font-medium text-ink-3">{greeting(now)}</p>
-          <h1 className="mt-0.5 text-[26px] leading-[1.25] font-bold tracking-[-0.03em]">
-            오늘은 어떤 노래로
-            <br />
-            공부해 볼까요?
-          </h1>
+    <div className="space-y-7 pt-5">
+      <header>
+        <div className="flex items-center justify-between">
+          <p className="text-[15px] font-medium text-ink-3">{greeting(now)}!</p>
+          <span className="flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold">
+            <Icon name="flame" className="size-4 text-pink" />
+            <span>
+              <span className="num">{days}</span>일 연속
+            </span>
+          </span>
         </div>
-        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-blue text-lime" aria-hidden>
-          <Icon name="music" className="size-[22px]" />
-        </span>
+        <Headline className="mt-2 text-[31px]" first="좋아하는 노래로" second="일본어 공부해요" />
       </header>
 
-      <Link
-        href="/songs/new"
-        className="press flex items-center justify-center gap-2 rounded-full bg-solid py-4 text-[15px] font-semibold text-on-solid"
-      >
-        <Icon name="plus" className="size-[18px]" /> 노래 추가
-      </Link>
+      <section className="iris-card relative overflow-hidden p-5">
+        <div
+          className="iris pointer-events-none absolute inset-x-0 bottom-0 h-3/5"
+          style={{ maskImage: "linear-gradient(to bottom, transparent, black)", WebkitMaskImage: "linear-gradient(to bottom, transparent, black)" }}
+          aria-hidden
+        />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-ink-3">
+              오늘 복습할 단어 <span className="num font-semibold text-blue">{queue.length}</span>개
+            </p>
+            <p className="mt-1.5 text-[19px] leading-snug font-semibold">
+              {queue.length ? (
+                <>
+                  노래 속 단어를
+                  <br />
+                  복습할 시간이에요
+                </>
+              ) : (
+                <>
+                  오늘 복습은
+                  <br />
+                  모두 끝났어요
+                </>
+              )}
+            </p>
+            {queue.length > 0 && (
+              <p className="mt-1 text-[13px] text-ink-3">
+                다시 볼 단어 {dueCount} · 새 단어 {newCount}
+              </p>
+            )}
+          </div>
+          <MascotGroup className="w-[118px] shrink-0" />
+        </div>
+        <Link
+          href={queue.length ? "/review" : "/songs/new"}
+          className="btn-primary press relative mt-5 flex items-center justify-center py-3.5 text-[15px] font-semibold"
+        >
+          {queue.length ? "복습 시작" : "새 노래 추가하기"}
+        </Link>
+      </section>
 
       {ai === false && (
-        <p className="flex gap-2.5 rounded-2xl bg-surface px-4 py-3.5 text-[14px] leading-relaxed text-ink-2">
-          <Icon name="info" className="mt-0.5 size-[18px] shrink-0 text-blue" />
+        <p className="iris flex items-center gap-3 rounded-3xl px-4 py-3 text-[14px] leading-relaxed text-ink-2">
+          <Mascot kind="bubble" className="size-10 shrink-0" />
           서버에 AI 키가 없어서 지금은 후리가나 가사와 데모곡만 쓸 수 있어요.
         </p>
       )}
 
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-[18px] font-bold">학습 현황</h2>
-          <Link href="/vocab" className="text-[14px] font-medium text-blue">
-            단어장 보기
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[19px] font-semibold">나의 기록</h2>
+          <Link href="/vocab" className="flex items-center text-[14px] font-medium text-ink-3">
+            단어장 <Icon name="chevron" className="size-4" />
           </Link>
         </div>
-
-        <ol className="flex gap-1.5" aria-label="최근 7일 복습 기록">
-          {week.map((d, i) => {
-            const date = new Date(d.ts);
-            const today = i === week.length - 1;
-            return (
-              <li
-                key={d.key}
-                className={`flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 ${
-                  today ? "bg-lime text-on-lime" : "bg-surface"
-                }`}
-                aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일 ${d.count}개 복습`}
-              >
-                <span className={`text-[11px] font-medium ${today ? "" : "text-ink-3"}`}>{WEEKDAYS[date.getDay()]}</span>
-                <span className="num text-[15px] font-semibold">{date.getDate()}</span>
-                <span className={`size-1 rounded-full ${d.count ? (today ? "bg-on-lime" : "bg-blue") : "bg-transparent"}`} />
-              </li>
-            );
-          })}
-        </ol>
-
-        <Link
-          href="/review"
-          className="press relative block overflow-hidden rounded-[28px] bg-blue px-5 pt-4 pb-5 text-on-blue"
-        >
-          <span className="absolute -right-10 -bottom-16 size-48 rounded-full bg-white/10" aria-hidden />
-          <span className="absolute -right-2 -bottom-24 size-48 rounded-full bg-white/10" aria-hidden />
-          <div className="relative flex items-start justify-between">
-            <p className="text-[14px] font-medium opacity-85">오늘 복습할 단어</p>
-            <span className="grid size-9 place-items-center rounded-full bg-white/20">
-              <Icon name="arrowUpRight" className="size-[18px]" />
-            </span>
+        <div className="card px-5 pt-5 pb-4">
+          <div className="grid grid-cols-3">
+            <Record value={days} label="일 연속" />
+            <Record value={learned} label="외운 단어" />
+            <Record value={allVocab.length} label="모은 단어" />
           </div>
-          <p className="num relative mt-3 text-[56px] leading-none font-semibold">
-            {queue.length}
-            <span className="ml-1 text-[20px] font-medium">개</span>
-          </p>
-          <p className="relative mt-2 text-[13px] opacity-80">
-            {queue.length ? `다시 볼 단어 ${dueCount} · 새 단어 ${newCount}` : "오늘 복습을 모두 마쳤어요"}
-          </p>
-        </Link>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Link href="/vocab" className="press rounded-[28px] bg-lav px-4 pt-4 pb-4 text-on-lav">
-            <p className="text-[13px] font-medium opacity-75">외운 단어</p>
-            <p className="num mt-2 text-[40px] leading-none font-semibold">{learned}</p>
-            <p className="mt-1.5 text-[12px] opacity-70">전체 {allVocab.length}개 중</p>
-          </Link>
-          <div className="rounded-[28px] bg-surface px-4 pt-4 pb-4">
-            <p className="flex items-center gap-1 text-[13px] font-medium text-ink-3">
-              <Icon name="flame" className="size-3.5" /> 연속 학습
-            </p>
-            <p className="num mt-2 text-[40px] leading-none font-semibold">
-              {days}
-              <span className="ml-0.5 text-[16px] font-medium">일</span>
-            </p>
-            <div className="mt-2 flex h-6 items-end gap-1" aria-label={`이번 주 ${weekTotal}개 복습`}>
-              {week.map((d, i) => (
-                <span
+          <ol className="mt-5 flex justify-between border-t border-line pt-4" aria-label="최근 7일 복습 기록">
+            {week.map((d, i) => {
+              const date = new Date(d.ts);
+              const today = i === week.length - 1;
+              return (
+                <li
                   key={d.key}
-                  className={`flex-1 rounded-[3px] ${i === week.length - 1 ? "bg-blue" : d.count ? "bg-lav" : "bg-muted"}`}
-                  style={{ height: `${Math.max(14, (d.count / weekMax) * 100)}%` }}
-                />
-              ))}
-            </div>
-          </div>
+                  className="flex flex-col items-center gap-1.5"
+                  aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일 ${d.count}개 복습`}
+                >
+                  <span className={`text-[12px] font-medium ${today ? "text-blue" : "text-ink-3"}`}>
+                    {WEEKDAYS[date.getDay()]}
+                  </span>
+                  <span
+                    className={`grid size-8 place-items-center rounded-full text-[13px] font-semibold ${
+                      d.count ? "btn-primary" : today ? "border border-blue text-blue" : "bg-muted text-ink-3"
+                    }`}
+                  >
+                    <span className="num">{date.getDate()}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
       </section>
 
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-[18px] font-bold">
-            내 노래 <span className="num ml-0.5 text-[15px] font-medium text-ink-3">{order.length}</span>
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[19px] font-semibold">
+            내 노래 <span className="num text-[15px] font-medium text-ink-3">{order.length}</span>
           </h2>
         </div>
+        {order.length > 0 && (
+          <div className="mb-3 flex gap-2">
+            {(
+              [
+                ["all", "전체"],
+                ["studying", "공부 중"],
+                ["done", "다 외움"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className="chip press"
+                aria-pressed={filter === key}
+                onClick={() => setFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         {order.length === 0 ? (
-          <Link href="/songs/new" className="block rounded-[28px] bg-surface px-5 py-10 text-center">
-            <span className="mx-auto grid size-12 place-items-center rounded-full bg-lime text-on-lime">
-              <Icon name="plus" />
-            </span>
+          <div className="card flex flex-col items-center px-5 py-9 text-center">
+            <Mascot kind="note" className="float size-20" />
             <p className="mt-3 font-semibold">첫 노래를 추가해 보세요</p>
             <p className="text-[14px] text-ink-3">가사를 붙여넣으면 단어장이 만들어져요</p>
-          </Link>
+          </div>
+        ) : visible.length === 0 ? (
+          <p className="py-8 text-center text-[14px] text-ink-3">
+            {filter === "done" ? "아직 다 외운 노래가 없어요." : "공부 중인 노래가 없어요."}
+          </p>
         ) : (
           <ul className="space-y-2.5">
-            {order.map((id) => songs[id] && <SongRow key={id} song={songs[id]} cards={cards} />)}
+            {visible.map((id) => (
+              <SongRow key={id} song={songs[id]} cards={cards} />
+            ))}
           </ul>
         )}
       </section>
@@ -176,42 +215,49 @@ function Home() {
   );
 }
 
+function Record({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="text-center">
+      <p className="num text-[32px] leading-none font-medium">{value}</p>
+      <p className="grad-text mt-1.5 text-[13px] font-semibold">{label}</p>
+    </div>
+  );
+}
+
 function SongRow({ song, cards }: { song: Song; cards: Record<string, CardState> }) {
   const inFlight = useInFlight((s) => s.ids.has(song.id));
-  const learned = song.vocab.filter((v) => isLearned(cards[v.id])).length;
   const total = song.vocab.length;
+  const done = song.vocab.filter((v) => isLearned(cards[v.id])).length;
   return (
     <li>
-      <Link href={`/songs/${song.id}`} className="press flex items-center gap-3.5 rounded-[24px] bg-surface p-3">
-        <span className={`grid size-[52px] shrink-0 place-items-center rounded-[18px] ${toneFor(song.id)}`}>
-          <Icon name="music" className="size-[22px]" />
-        </span>
+      <Link href={`/songs/${song.id}`} className="card press flex items-center gap-3.5 p-3">
+        <SongCover id={song.id} />
         <div className="min-w-0 flex-1">
           <div className="font-jp truncate text-[16px] font-bold">{song.title}</div>
           <div className="truncate text-[13px] text-ink-3">
             {song.artist || "아티스트 미상"} · {song.level}
           </div>
-        </div>
-        <div className="w-16 shrink-0 text-right">
-          {song.status === "ready" && (
-            <>
-              <div className="num text-[13px] font-semibold">
-                {learned}
-                <span className="text-ink-3">/{total}</span>
+          {song.status === "ready" && total > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-[image:var(--grad-text)]" style={{ width: `${(done / total) * 100}%` }} />
               </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-blue" style={{ width: `${total ? (learned / total) * 100 : 0}%` }} />
-              </div>
-            </>
+              <span className="num text-[12px] font-semibold text-ink-3">
+                {done}/{total}
+              </span>
+            </div>
           )}
           {song.status === "analyzing" && (
-            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-3">
+            <span className="mt-1 inline-flex items-center gap-1.5 text-[12px] font-medium text-blue">
               {inFlight && <Spinner className="size-3" />}
-              {inFlight ? "만드는 중" : "멈춤"}
+              {inFlight ? "단어장 만드는 중" : "멈춤 · 눌러서 다시 시도"}
             </span>
           )}
-          {song.status === "error" && <span className="text-[12px] font-semibold text-danger">다시 시도</span>}
+          {song.status === "error" && (
+            <span className="mt-1 inline-block text-[12px] font-semibold text-danger">단어장 만들기 실패 · 다시 시도</span>
+          )}
         </div>
+        <Icon name="chevron" className="size-5 shrink-0 text-ink-3" />
       </Link>
     </li>
   );
