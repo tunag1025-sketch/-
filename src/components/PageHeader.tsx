@@ -14,7 +14,7 @@ export function Headline({
   as?: "h1" | "h2";
 }) {
   return (
-    <Tag className={`leading-[1.18] font-semibold tracking-[-0.035em] ${className}`}>
+    <Tag className={`leading-[1.18] font-extrabold tracking-[-0.035em] ${className}`}>
       <span className="block">{first}</span>
       <span className="grad-text block pb-0.5">{second}</span>
     </Tag>

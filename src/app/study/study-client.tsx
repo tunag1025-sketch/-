@@ -103,7 +103,7 @@ function Study() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-[19px] font-semibold">범위</h2>
+        <h2 className="mb-3 text-[19px] font-bold">범위</h2>
         <ul className="space-y-2" role="radiogroup" aria-label="학습 범위">
           <ScopeRow
             selected={!songId}
@@ -133,7 +133,7 @@ function Study() {
       </section>
 
       <section>
-        <h2 className="text-[19px] font-semibold">하루 학습량</h2>
+        <h2 className="text-[19px] font-bold">하루 학습량</h2>
         <p className="mt-1 mb-3 text-[14px] text-ink-3">하루에 새로 배울 단어 수예요. 다시 볼 단어는 이와 상관없이 모두 나와요.</p>
         <DailyAmount value={dailyNew} onChange={(n) => setSettings({ dailyNew: n })} />
         <p className="mt-3 text-[13px] text-ink-3">
@@ -151,7 +151,7 @@ function Study() {
           className="press flex w-full items-center gap-3 text-left"
         >
           <span className="min-w-0 flex-1">
-            <span className="block text-[19px] font-semibold">뜻 볼 때 발음 듣기</span>
+            <span className="block text-[19px] font-bold">뜻 볼 때 발음 듣기</span>
             <span className="mt-1 block text-[14px] text-ink-3">뜻을 보거나 답을 고르면 단어를 읽어 줘요.</span>
           </span>
           <span
@@ -168,7 +168,7 @@ function Study() {
       </section>
 
       <section>
-        <h2 className="text-[19px] font-semibold">문제 유형</h2>
+        <h2 className="text-[19px] font-bold">문제 유형</h2>
         <p className="mt-1 mb-3 text-[14px] text-ink-3">고른 유형이 섞여서 나와요. 처음 보는 단어는 뜻 떠올리기로 나와요.</p>
         <ul className="space-y-2">
           {QUIZ_TYPES.map(({ type, label, hint }) => {

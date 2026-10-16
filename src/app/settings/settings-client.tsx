@@ -70,7 +70,7 @@ function AccountSection() {
 
   return (
     <section>
-      <h2 className="text-[19px] font-semibold">계정</h2>
+      <h2 className="text-[19px] font-bold">계정</h2>
       {user ? (
         <div className="card mt-3 px-4 py-4">
           <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ function Invites() {
 
   return (
     <section>
-      <h2 className="text-[19px] font-semibold">친구 초대</h2>
+      <h2 className="text-[19px] font-bold">친구 초대</h2>
       <p className="mt-1 text-[14px] leading-relaxed text-ink-3">
         초대 링크를 받은 사람만 가입할 수 있어요. 링크 하나로 한 사람이 가입해요.
       </p>
@@ -282,7 +282,7 @@ function Backup() {
 
   return (
     <section>
-      <h2 className="text-[19px] font-semibold">백업</h2>
+      <h2 className="text-[19px] font-bold">백업</h2>
       <p className="mt-1 text-[14px] leading-relaxed text-ink-3">
         파일로 내보내 두면 브라우저 데이터를 지우거나 기기를 바꿔도 다시 불러올 수 있어요. 로그인하지 않으면 기록은 이 기기에만
         있어요.

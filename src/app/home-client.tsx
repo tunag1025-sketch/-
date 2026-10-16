@@ -171,7 +171,7 @@ function Home() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[19px] font-semibold">나의 기록</h2>
+          <h2 className="text-[19px] font-bold">나의 기록</h2>
           <Link href="/vocab" className="flex items-center text-[14px] font-medium text-ink-3">
             단어장 <Icon name="chevron" className="size-4" />
           </Link>
@@ -218,7 +218,7 @@ function Home() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[19px] font-semibold">
+          <h2 className="text-[19px] font-bold">
             내 노래 <span className="num text-[15px] font-medium text-ink-3">{order.length}</span>
           </h2>
           {order.length > 0 && <MemoryLegend />}
