@@ -61,6 +61,8 @@ export type Song = {
   lines: LyricLine[];
   status: SongStatus;
   error?: string;
+  /** 실패 이유 코드 (LOGIN_REQUIRED면 로그인 버튼을 보여 준다) */
+  errorCode?: string;
   summary?: string;
   vocab: VocabItem[];
   grammar: GrammarPoint[];

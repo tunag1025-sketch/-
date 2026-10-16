@@ -9,6 +9,8 @@ import type { CardState, Grade, LineExplanation, Song } from "./types";
 
 type State = UserData & {
   seededDemo: boolean;
+  /** 설정을 마지막으로 바꾼 시각 (동기화용) */
+  settingsUpdatedAt: number;
 
   addSong: (song: Song) => void;
   /** 새 노래를 만들어 저장하고 id를 돌려준다. */
@@ -45,6 +47,7 @@ export const useStore = create<State>()(
       settings: DEFAULT_SETTINGS,
       deleted: {},
       seededDemo: false,
+      settingsUpdatedAt: 0,
 
       addSong: (song) =>
         set((s) => ({
@@ -113,7 +116,7 @@ export const useStore = create<State>()(
       setExplanation: (key, explanation) =>
         set((s) => ({ explanations: { ...s.explanations, [key]: explanation } })),
 
-      setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
+      setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch }, settingsUpdatedAt: Date.now() })),
 
       markDemoSeeded: () => set({ seededDemo: true }),
 

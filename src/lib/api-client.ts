@@ -100,7 +100,7 @@ export async function startAnalysis(songId: string, opts: { retokenize?: boolean
   if (!song) return;
 
   setInFlight(songId, true);
-  updateSong(songId, { status: "analyzing", error: undefined });
+  updateSong(songId, { status: "analyzing", error: undefined, errorCode: undefined });
   try {
     if (opts.retokenize) {
       const lines = await tokenize(song.lines.map((l) => l.text));
@@ -125,6 +125,7 @@ export async function startAnalysis(songId: string, opts: { retokenize?: boolean
     useStore.getState().updateSong(songId, {
       status: "error",
       error: err instanceof Error ? err.message : "분석에 실패했어요.",
+      errorCode: err instanceof ApiError ? err.code : undefined,
     });
   } finally {
     setInFlight(songId, false);

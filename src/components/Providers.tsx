@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { loadAccount, useAccount } from "@/lib/account";
 import demoSong from "@/lib/demo-song.json";
 import { explanationKey, useHydrated, useStore } from "@/lib/store";
+import { startSync, stopSync } from "@/lib/sync";
 import type { Song } from "@/lib/types";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -21,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         state.markDemoSeeded();
       }
       useHydrated.setState({ hydrated: true });
+      void loadAccount();
     };
     const result = useStore.persist.rehydrate();
     if (result instanceof Promise) result.then(finish, finish);
@@ -30,6 +33,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
       navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
     }
   }, []);
+
+  // 로그인했으면 이 기기의 기록을 계정과 맞춘다.
+  const userId = useAccount((s) => s.user?.id);
+  const hydrated = useHydrated((s) => s.hydrated);
+  useEffect(() => {
+    if (!hydrated || !userId) return;
+    startSync(userId);
+    return () => stopSync();
+  }, [hydrated, userId]);
 
   return children;
 }

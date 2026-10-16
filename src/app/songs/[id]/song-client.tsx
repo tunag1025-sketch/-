@@ -14,6 +14,7 @@ import { Spinner } from "@/components/Spinner";
 import { Stat } from "@/components/Stat";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
+import { useAccount } from "@/lib/account";
 import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-client";
 import type { Artwork } from "@/lib/artwork";
 import { fileToCover } from "@/lib/image";
@@ -369,6 +370,7 @@ function CoverPicker({ song }: { song: Song }) {
 
 function AnalysisStatus({ song }: { song: Song }) {
   const inFlight = useInFlight((s) => s.ids.has(song.id));
+  const user = useAccount((s) => s.user);
   if (song.status === "ready") return null;
 
   if (song.status === "analyzing" && inFlight) {
@@ -387,19 +389,29 @@ function AnalysisStatus({ song }: { song: Song }) {
 
   const message =
     song.status === "error" ? song.error : "단어장 만들기가 중간에 멈췄어요. 앱을 닫거나 새로고침하면 멈춰요.";
+  const needLogin = song.errorCode === "LOGIN_REQUIRED" && !user;
   return (
     <div className="card mt-5 px-4 py-4">
       <div className="flex gap-3">
         <IconCircle name="info" tone="danger" className="size-11" />
         <p className="text-[14px] leading-relaxed text-ink-2">{message}</p>
       </div>
-      <button
-        type="button"
-        onClick={() => startAnalysis(song.id, { retokenize: true })}
-        className="btn-primary press mt-3 flex w-full items-center justify-center gap-1.5 py-3 text-[14px] font-semibold"
-      >
-        <Icon name="refresh" className="size-4" /> 단어장 다시 만들기
-      </button>
+      {needLogin ? (
+        <Link
+          href={`/login?next=${encodeURIComponent(`/songs/${song.id}`)}`}
+          className="btn-primary press mt-3 flex w-full items-center justify-center gap-1.5 py-3 text-[14px] font-semibold"
+        >
+          <Icon name="user" className="size-4" /> 로그인하기
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => startAnalysis(song.id, { retokenize: true })}
+          className="btn-primary press mt-3 flex w-full items-center justify-center gap-1.5 py-3 text-[14px] font-semibold"
+        >
+          <Icon name="refresh" className="size-4" /> 단어장 다시 만들기
+        </button>
+      )}
     </div>
   );
 }

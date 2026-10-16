@@ -8,6 +8,7 @@ import { Headline } from "@/components/PageHeader";
 import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
 import { Stat } from "@/components/Stat";
+import { useAccount } from "@/lib/account";
 import { useInFlight } from "@/lib/api-client";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
 import { isLearned } from "@/lib/srs";
@@ -35,6 +36,8 @@ function Home() {
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
   const ai = useAiStatus();
+  const accountEnabled = useAccount((s) => s.enabled);
+  const user = useAccount((s) => s.user);
   const [now] = useState(Date.now);
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -81,9 +84,14 @@ function Home() {
             <Link
               href="/settings"
               aria-label="설정"
-              className="press grid size-9 place-items-center rounded-full border border-line bg-surface text-ink-2"
+              className="press grid size-9 place-items-center overflow-hidden rounded-full border border-line bg-surface text-ink-2"
             >
-              <Icon name="user" className="size-[18px]" />
+              {user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.image} alt="" className="size-full rounded-full object-cover" />
+              ) : (
+                <Icon name="user" className="size-[18px]" />
+              )}
             </Link>
           </div>
         </div>
@@ -140,6 +148,17 @@ function Home() {
               : "새 노래 추가하기"}
         </Link>
       </section>
+
+      {accountEnabled && !user && (
+        <Link
+          href="/login"
+          className="press flex items-center gap-3 rounded-3xl bg-muted px-4 py-3 text-[14px] leading-relaxed text-ink-2"
+        >
+          <IconCircle name="user" tone="plain" className="size-10" />
+          <span className="min-w-0 flex-1">로그인하면 AI 단어장을 만들고 여러 기기에서 이어서 공부할 수 있어요.</span>
+          <Icon name="chevron" className="size-5 shrink-0 text-ink-3" />
+        </Link>
+      )}
 
       {ai === false && (
         <p className="flex items-center gap-3 rounded-3xl bg-muted px-4 py-3 text-[14px] leading-relaxed text-ink-2">
