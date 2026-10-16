@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Headline, TopBar } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
-import { autoCover, startAnalysis, tokenize } from "@/lib/api-client";
+import { Icon } from "@/components/Icon";
+import { autoCover, searchSongs, startAnalysis, tokenize } from "@/lib/api-client";
+import type { SongHit } from "@/lib/artwork";
 import { cleanLyrics } from "@/lib/lyrics";
 import { useStore } from "@/lib/store";
 import { LEVELS, type Level } from "@/lib/types";
@@ -34,6 +36,8 @@ function NewSongForm() {
   const [artist, setArtist] = useState("");
   const [level, setLevel] = useState<Level>(defaultLevel);
   const [lyrics, setLyrics] = useState("");
+  // 검색에서 고른 노래 (앨범 커버를 그대로 쓴다)
+  const [picked, setPicked] = useState<SongHit | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +70,8 @@ function NewSongForm() {
       const id = createSong({ title: title.trim(), artist: artist.trim(), level, lines: tokenized });
       setSettings({ defaultLevel: level });
       void startAnalysis(id);
-      void autoCover(id);
+      if (picked?.cover) useStore.getState().updateSong(id, { cover: picked.cover, coverSearched: true });
+      else void autoCover(id);
       router.replace(`/songs/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "가사를 읽지 못했어요.");
@@ -79,6 +84,16 @@ function NewSongForm() {
       <TopBar backHref="/" title="노래 추가" />
 
       <Headline className="text-[28px]" first="어떤 노래로" second="공부해 볼까요?" />
+
+      <SongSearch
+        picked={picked}
+        onPick={(hit) => {
+          setPicked(hit);
+          setTitle(hit.title);
+          setArtist(hit.artist);
+        }}
+        onClear={() => setPicked(null)}
+      />
 
       <div className="space-y-4">
         <Field label="노래 제목" htmlFor="title">
@@ -122,7 +137,23 @@ function NewSongForm() {
         <p className="mt-2 text-[13px] text-ink-3">{LEVEL_HINT[level]}</p>
       </fieldset>
 
-      <Field label="가사" hint={lineCount ? `${lineCount}줄` : undefined} htmlFor="lyrics">
+      <Field
+        label="가사"
+        hint={lineCount ? `${lineCount}줄` : undefined}
+        htmlFor="lyrics"
+        action={
+          title.trim() ? (
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(`${title.trim()} ${artist.trim()} 歌詞`.replace(/\s+/g, " "))}`}
+              target="_blank"
+              rel="noreferrer"
+              className="press flex items-center gap-1 text-[13px] font-semibold text-blue"
+            >
+              가사 찾아보기 <Icon name="arrowUpRight" className="size-3.5" />
+            </a>
+          ) : undefined
+        }
+      >
         <textarea
           id="lyrics"
           value={lyrics}
@@ -133,7 +164,9 @@ function NewSongForm() {
           className="font-jp input min-h-[16rem] resize-y text-[16px] leading-relaxed"
           required
         />
-        <p className="mt-2 text-[13px] text-ink-3">가사는 이 기기에만 저장되고, 단어장을 만들 때만 AI에 보내져요.</p>
+        <p className="mt-2 text-[13px] text-ink-3">
+          가사는 직접 찾아 붙여넣어 주세요. 내 기기(로그인하면 내 계정)에만 저장되고, 단어장을 만들 때만 AI에 보내져요.
+        </p>
       </Field>
 
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-[14px] font-medium text-danger">{error}</p>}
@@ -174,20 +207,159 @@ function Field({
   label,
   hint,
   htmlFor,
+  action,
   children,
 }: {
   label: string;
   hint?: string;
   htmlFor: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-2 flex items-baseline justify-between text-[15px] font-semibold">
-        {label}
-        {hint && <span className="text-[13px] font-normal text-ink-3">{hint}</span>}
-      </label>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <label htmlFor={htmlFor} className="flex items-baseline gap-2 text-[15px] font-semibold">
+          {label}
+          {hint && <span className="text-[13px] font-normal text-ink-3">{hint}</span>}
+        </label>
+        {action}
+      </div>
       {children}
+    </div>
+  );
+}
+
+/** 제목·가수로 노래를 찾아 고른다. 고르면 제목·가수·앨범 커버가 채워진다. */
+function SongSearch({
+  picked,
+  onPick,
+  onClear,
+}: {
+  picked: SongHit | null;
+  onPick: (hit: SongHit) => void;
+  onClear: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<SongHit[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  // 입력이 멈추면 찾는다.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      setLoading(true);
+      searchSongs(q, ctrl.signal)
+        .then((r) => {
+          setHits(r);
+          setFailed(false);
+        })
+        .catch((err) => {
+          if (!ctrl.signal.aborted) setFailed(true);
+          void err;
+        })
+        .finally(() => !ctrl.signal.aborted && setLoading(false));
+    }, 350);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [query]);
+
+  if (picked) {
+    return (
+      <div className="card flex items-center gap-3 p-3">
+        {picked.cover ? (
+          // 앨범 커버는 외부 주소라 그대로 쓴다.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={picked.cover} alt="" className="size-14 shrink-0 rounded-2xl bg-muted object-cover" />
+        ) : (
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-blue-soft text-blue">
+            <Icon name="music" className="size-6" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="font-jp truncate text-[16px] font-bold">{picked.title}</p>
+          <p className="font-jp truncate text-[13px] text-ink-3">
+            {[picked.artist, picked.album].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            onClear();
+            setHits(null);
+            setQuery("");
+          }}
+          className="press shrink-0 rounded-full bg-muted px-3 py-1.5 text-[13px] font-semibold text-ink-2"
+        >
+          다시 찾기
+        </button>
+      </div>
+    );
+  }
+
+  const q = query.trim();
+  return (
+    <div>
+      <label htmlFor="song-search" className="mb-2 block text-[15px] font-semibold">
+        노래 찾기
+      </label>
+      <div className="relative">
+        <Icon name="search" className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-ink-3" />
+        <input
+          id="song-search"
+          type="search"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (e.target.value.trim().length < 2) setHits(null);
+          }}
+          placeholder="제목이나 가수 (예: 夜に駆ける, YOASOBI)"
+          className="font-jp input rounded-full pl-11"
+          autoComplete="off"
+          enterKeyHint="search"
+        />
+        {loading && <Spinner className="absolute top-1/2 right-4 size-4 -translate-y-1/2 text-ink-3" />}
+      </div>
+      {q.length >= 2 && hits && (
+        <ul className="card mt-2 divide-y divide-line overflow-hidden" aria-label="검색 결과">
+          {hits.map((h) => (
+            <li key={`${h.title}|${h.artist}|${h.album}`}>
+              <button
+                type="button"
+                onClick={() => onPick(h)}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors active:bg-muted"
+              >
+                {h.cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={h.cover} alt="" loading="lazy" className="size-11 shrink-0 rounded-xl bg-muted object-cover" />
+                ) : (
+                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-ink-3">
+                    <Icon name="music" className="size-5" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="font-jp block truncate text-[15px] font-semibold">{h.title}</span>
+                  <span className="font-jp block truncate text-[13px] text-ink-3">
+                    {[h.artist, h.album].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+          {hits.length === 0 && (
+            <li className="px-4 py-3 text-[14px] text-ink-3">찾는 노래가 없어요. 아래에 제목과 가수를 직접 적어 주세요.</li>
+          )}
+        </ul>
+      )}
+      {failed && <p className="mt-2 text-[13px] text-danger">노래를 찾지 못했어요. 아래에 직접 적어 주세요.</p>}
+      {!hits && !failed && (
+        <p className="mt-2 text-[13px] text-ink-3">고르면 제목·가수·앨범 커버가 채워져요. 없으면 아래에 직접 적어도 돼요.</p>
+      )}
     </div>
   );
 }

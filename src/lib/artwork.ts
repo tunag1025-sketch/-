@@ -1,7 +1,7 @@
 /** 앨범 커버 후보 */
 export type Artwork = { url: string; title: string; artist: string; album: string };
 
-type ItunesResult = {
+export type ItunesResult = {
   trackName?: string;
   artistName?: string;
   collectionName?: string;
@@ -42,4 +42,26 @@ export function bestMatch(candidates: Artwork[], title: string, artist: string):
     const artistOk = !a || ca.includes(a) || a.includes(ca);
     return titleOk && artistOk;
   });
+}
+
+/** 노래 검색 결과 하나 */
+export type SongHit = { title: string; artist: string; album: string; cover: string | null };
+
+/** iTunes 검색 결과를 노래 후보로 바꾼다. 같은 제목·가수는 하나만. */
+export function toSongHits(results: ItunesResult[]): SongHit[] {
+  const seen = new Set<string>();
+  const out: SongHit[] = [];
+  for (const r of results) {
+    if (!r.trackName) continue;
+    const key = `${normalizeName(r.trackName)}|${normalizeName(r.artistName ?? "")}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      title: r.trackName,
+      artist: r.artistName ?? "",
+      album: r.collectionName ?? "",
+      cover: r.artworkUrl100 ? r.artworkUrl100.replace(/\/\d+x\d+bb\./, "/600x600bb.") : null,
+    });
+  }
+  return out;
 }

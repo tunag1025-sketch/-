@@ -40,3 +40,18 @@ describe("artwork", () => {
     expect(arts).toHaveLength(2);
   });
 });
+
+describe("song search", () => {
+  it("lists each song once with a 600px cover", async () => {
+    const { toSongHits } = await import("../artwork");
+    const hits = toSongHits([
+      { trackName: "夜に駆ける", artistName: "YOASOBI", collectionName: "THE BOOK", artworkUrl100: "https://x/a/100x100bb.jpg" },
+      { trackName: "夜に駆ける", artistName: "YOASOBI", collectionName: "Single" },
+      { trackName: "群青", artistName: "YOASOBI" },
+    ]);
+    expect(hits).toEqual([
+      { title: "夜に駆ける", artist: "YOASOBI", album: "THE BOOK", cover: "https://x/a/600x600bb.jpg" },
+      { title: "群青", artist: "YOASOBI", album: "", cover: null },
+    ]);
+  });
+});

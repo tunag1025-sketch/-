@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import type { AnalyzeResponse } from "./analysis/normalize";
-import { type Artwork, bestMatch } from "./artwork";
+import { type Artwork, bestMatch, type SongHit } from "./artwork";
 import type { ExplainRequest } from "./analysis/schema";
 import { explanationKey, useStore } from "./store";
 import type { LineExplanation, LyricLine, Song } from "./types";
@@ -149,4 +149,12 @@ export async function autoCover(songId: string): Promise<void> {
   const match = bestMatch(await findArtwork(song.title, song.artist), song.title, song.artist);
   const now = useStore.getState().songs[songId];
   if (match && now && !now.cover) useStore.getState().updateSong(songId, { cover: match.url });
+}
+
+/** 노래 추가 화면의 노래 검색 */
+export async function searchSongs(q: string, signal?: AbortSignal): Promise<SongHit[]> {
+  const res = await fetch(`/api/songs/search?q=${encodeURIComponent(q)}`, { signal });
+  if (!res.ok) throw new ApiError("노래를 찾지 못했어요.", "SEARCH_FAILED");
+  const data = (await res.json()) as { results?: SongHit[] };
+  return data.results ?? [];
 }

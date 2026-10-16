@@ -50,12 +50,15 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
   );
 
   // 시작할 때의 목록을 고정한다. "다시"를 누른 카드는 뒤에 다시 붙인다.
-  const [queue, setQueue] = useState(() => {
+  // 처음 배우는 단어는 '학습', 다시 보는 단어는 '복습'으로 보여 준다.
+  const [{ initial, fresh }] = useState(() => {
     const { songs, order, cards, newLog, settings } = useStore.getState();
     const now = Date.now();
     const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
-    return buildQueue(songs, order, cards, now, { songId, newLimit }).queue.map((v) => v.id);
+    const ids = buildQueue(songs, order, cards, now, { songId, newLimit }).queue.map((v) => v.id);
+    return { initial: ids, fresh: new Set(ids.filter((id) => !cards[id])) };
   });
+  const [queue, setQueue] = useState(initial);
   const [pos, setPos] = useState(0);
   const [doneCount, setDoneCount] = useState(0);
   const [learnedCount, setLearnedCount] = useState(0);
@@ -112,6 +115,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
           next={next}
           pos={pos}
           total={queue.length}
+          isNew={fresh.has(currentId)}
           exitHref={exitHref}
           onAnswer={answer}
           onLearned={() => advance(true, true)}
@@ -125,6 +129,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
           songId={songId}
           extra={extra}
           empty={queue.length === 0}
+          studiedNew={fresh.size > 0}
           exitHref={exitHref}
         />
       )}
@@ -174,6 +179,7 @@ function ReviewCard({
   next,
   pos,
   total,
+  isNew,
   exitHref,
   onAnswer,
   onLearned,
@@ -183,6 +189,8 @@ function ReviewCard({
   pool: VocabItem[];
   next?: { song: Song; item: VocabItem };
   pos: number;
+  /** 이번에 처음 배우는 단어인지 */
+  isNew: boolean;
   total: number;
   exitHref: string;
   onAnswer: (g: Grade) => void;
@@ -227,9 +235,9 @@ function ReviewCard({
     <div className={revealed ? "pb-56" : "pb-24"}>
       <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div>
-          <CircleLink href={exitHref} icon="close" label="복습 그만하기" />
+          <CircleLink href={exitHref} icon="close" label="학습 그만하기" />
         </div>
-        <span className="text-[16px] font-semibold">복습</span>
+        <span className="text-[16px] font-semibold">{isNew ? "새 단어 학습" : "복습"}</span>
         <span className="num text-right text-[14px] font-semibold text-ink-3">
           {pos + 1}/{total}
         </span>
@@ -459,11 +467,14 @@ function Finished({
   songId,
   extra,
   empty,
+  studiedNew,
   exitHref,
 }: {
   total: number;
   learned: number;
   short: number;
+  /** 새 단어가 있었으면 '학습', 다시 보는 단어만 있었으면 '복습' */
+  studiedNew: boolean;
   songTitle?: string;
   songId?: string;
   extra: number;
@@ -491,19 +502,19 @@ function Finished({
       )}
       <Headline
         className="mt-6 text-[28px]"
-        first={empty ? "지금은" : "오늘 복습"}
+        first={empty ? "지금은" : studiedNew ? "오늘 학습" : "오늘 복습"}
         second={empty ? "쉬어도 돼요" : "완료했어요!"}
       />
       <p className="mt-2 text-[15px] text-ink-3">
         {empty
           ? freshLeft > 0
             ? `오늘 배울 새 단어 ${dailyNew}개를 다 배웠어요.`
-            : "노래를 추가하거나 다음 복습 시간이 되면 단어가 생겨요."
-          : `${songTitle ? `'${songTitle}' ` : ""}단어를 모두 복습했어요.`}
+            : "노래를 추가하거나 다시 볼 때가 되면 단어가 생겨요."
+          : `${songTitle ? `'${songTitle}' ` : ""}단어를 모두 ${studiedNew ? "학습" : "복습"}했어요.`}
       </p>
       {!empty && (
         <div className="card mt-7 grid w-full grid-cols-4 py-5">
-          <Stat className="text-[34px]" value={total} label="복습한 단어" />
+          <Stat className="text-[34px]" value={total} label={studiedNew ? "학습한 단어" : "복습한 단어"} />
           <Stat className="text-[34px]" value={short} label="새 단기기억" />
           <Stat className="text-[34px]" value={learned} label="새 장기기억" />
           <Stat className="text-[34px]" value={days} label="일 연속" />
