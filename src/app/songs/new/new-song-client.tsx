@@ -43,7 +43,7 @@ function NewSongForm({ initialQuery }: { initialQuery: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const lines = cleanLyrics(lyrics);
+  const { lines, koreanLines } = cleanLyrics(lyrics);
   const lineCount = lines.filter((l) => l.trim()).length;
   const canSubmit = title.trim() && lineCount > 0 && !busy;
 
@@ -167,6 +167,14 @@ function NewSongForm({ initialQuery }: { initialQuery: string }) {
           className="font-jp input min-h-[16rem] resize-y text-[16px] leading-relaxed"
           required
         />
+        {koreanLines > 0 && (
+          <p className="mt-2 flex items-start gap-1.5 rounded-2xl bg-blue-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
+            <Icon name="info" className="mt-0.5 size-4 shrink-0 text-blue" />
+            {lineCount > 0
+              ? `한글 발음·해석 ${koreanLines}줄은 빼고 일본어 가사 ${lineCount}줄로 만들어요.`
+              : "일본어 가사가 없어요. 한글 발음이나 해석만으로는 단어장을 만들 수 없어요."}
+          </p>
+        )}
         <p className="mt-2 text-[13px] text-ink-3">
           가사는 직접 찾아 붙여넣어 주세요. 내 기기(로그인하면 내 계정)에만 저장되고, 단어장을 만들 때만 AI에 보내져요.
         </p>

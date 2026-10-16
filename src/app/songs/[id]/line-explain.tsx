@@ -18,11 +18,14 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
             <p className="min-w-0 flex-1 text-[16px] font-bold">{explanation.translation}</p>
             <SpeakButton text={song.lines[index].text} label="이 줄 듣기" className="size-8" plain />
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {explanation.breakdown.map((b, i) => (
-              <li key={i} className="flex gap-3">
-                <span className="font-jp shrink-0 rounded-lg bg-surface/80 px-2 font-semibold text-blue">{b.part}</span>
-                <span className="text-ink-2">{b.meaning}</span>
+              // 조각이 길어도 뜻 칸이 좁아지지 않게 조각은 절반까지만, 높이는 제 글자만큼
+              <li key={i} className="flex items-start gap-3">
+                <span className="font-jp max-w-[50%] shrink-0 rounded-lg bg-surface/80 px-2 font-semibold break-words text-blue">
+                  {b.part}
+                </span>
+                <span className="min-w-0 flex-1 text-ink-2">{b.meaning}</span>
               </li>
             ))}
           </ul>

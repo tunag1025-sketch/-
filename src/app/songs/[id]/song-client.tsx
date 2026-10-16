@@ -20,6 +20,7 @@ import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-cl
 import type { Artwork } from "@/lib/artwork";
 import { cardOf } from "@/lib/cards";
 import { fileToCover } from "@/lib/image";
+import { isKoreanOnly } from "@/lib/lyrics";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
 import { memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
@@ -80,6 +81,7 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
 
   const word = openWord ? song.vocab.find((v) => v.id === openWord) : undefined;
   const memory = progressOf(song.vocab, cards);
+  const koreanLines = song.lines.filter((l) => isKoreanOnly(l.text)).length;
   const total = song.vocab.length;
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
@@ -194,10 +196,12 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
           {song.status === "ready" && total > 0 && (
             <p className="mb-2 text-[13px] leading-relaxed text-ink-3">
               색칠된 단어를 누르면 뜻과 예문을, 줄 끝 버튼을 누르면 그 줄 해설을 볼 수 있어요.
+              {koreanLines > 0 && ` 같이 붙여넣은 한글 발음·해석 ${koreanLines}줄은 숨겼어요.`}
             </p>
           )}
           {song.lines.map((line, i) =>
-            line.text.trim() ? (
+            // 예전에 한글 발음·해석까지 붙여넣은 노래는 그 줄을 숨긴다 (새 노래는 추가할 때 뺀다).
+            isKoreanOnly(line.text) ? null : line.text.trim() ? (
               <div key={i}>
                 <div className="flex items-start gap-2">
                   <p className="flex-1 text-[19px] leading-[2.3] text-pretty">
