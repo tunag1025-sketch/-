@@ -13,9 +13,9 @@ export type QuizType = "recall" | "choice" | "blank" | "reading";
 
 export const QUIZ_TYPES: { type: QuizType; label: string; hint: string }[] = [
   { type: "recall", label: "뜻 떠올리기", hint: "단어를 보고 뜻을 떠올린 뒤 뒤집어 봐요" },
-  { type: "choice", label: "단어 고르기", hint: "뜻을 보고 알맞은 단어를 4개 중에 골라요" },
+  { type: "choice", label: "단어 고르기", hint: "뜻을 보고 4개 중에 골라요" },
   { type: "blank", label: "가사 빈칸", hint: "가사에서 빈칸에 들어갈 말을 골라요" },
-  { type: "reading", label: "읽는 법 쓰기", hint: "단어의 읽는 법을 히라가나로 써요 (일본어 자판 필요)" },
+  { type: "reading", label: "읽는 법 쓰기", hint: "히라가나로 써요 · 일본어 자판 필요" },
 ];
 
 export const DEFAULT_QUIZ_TYPES: QuizType[] = ["recall", "choice", "blank"];

@@ -33,7 +33,7 @@ function Invite({ code }: { code: string }) {
       ) : user ? (
         <div className="card px-5 py-5">
           <p className="text-[15px]">이미 가입돼 있어요.</p>
-          <Link href="/" className="btn-primary press mt-4 flex justify-center py-3.5 text-[15px] font-semibold">
+          <Link href="/" className="btn-primary press mt-4 flex h-[52px] items-center justify-center text-[15px] font-bold">
             시작하기
           </Link>
         </div>

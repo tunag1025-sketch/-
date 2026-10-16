@@ -32,7 +32,7 @@ export function LoginButtons({ next, invite }: { next?: string; invite?: string 
       {providers.includes("kakao") && (
         <a
           href={loginHref("kakao", { next, invite })}
-          className="press flex items-center justify-center gap-2 rounded-full bg-[#FEE500] py-3.5 text-[15px] font-semibold text-[#191919]"
+          className="press flex items-center justify-center gap-2 h-[52px] rounded-full bg-[#FEE500] text-[15px] font-semibold text-[#191919]"
         >
           <KakaoMark /> 카카오로 계속하기
         </a>
@@ -40,7 +40,7 @@ export function LoginButtons({ next, invite }: { next?: string; invite?: string 
       {providers.includes("google") && (
         <a
           href={loginHref("google", { next, invite })}
-          className="press flex items-center justify-center gap-2 rounded-full border border-line bg-white py-3.5 text-[15px] font-semibold text-[#1f1f1f]"
+          className="press flex items-center justify-center gap-2 h-[52px] rounded-full border border-line bg-white text-[15px] font-semibold text-[#1f1f1f]"
         >
           <GoogleMark /> Google로 계속하기
         </a>

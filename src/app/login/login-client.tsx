@@ -32,12 +32,12 @@ function Login({ error, next }: { error: string | null; next?: string }) {
     <div className="space-y-7">
       <TopBar backHref="/" title="로그인" />
       <Headline className="text-[30px]" first="로그인하고" second="어디서든 이어서" />
-      <p className="text-[15px] leading-relaxed text-ink-2">
+      <p className="text-[15px] leading-[1.65] text-ink-2">
         로그인하면 AI 단어장을 만들 수 있고, 폰과 컴퓨터에서 같은 학습 기록을 써요. 지금 이 기기에 있는 기록도 계정으로
         옮겨져요.
       </p>
       {error && (
-        <p role="alert" className="rounded-2xl bg-danger/10 px-4 py-3 text-[14px] leading-relaxed text-danger">
+        <p role="alert" className="rounded-2xl bg-danger-soft px-4 py-3 text-[14px] leading-relaxed text-danger">
           {ERRORS[error] ?? ERRORS.failed}
         </p>
       )}
@@ -50,7 +50,7 @@ function Login({ error, next }: { error: string | null; next?: string }) {
           <p className="text-[15px]">
             <span className="font-semibold">{user.name || "회원"}</span>님으로 로그인돼 있어요.
           </p>
-          <Link href={next ?? "/"} className="btn-primary press mt-4 flex justify-center py-3.5 text-[15px] font-semibold">
+          <Link href={next ?? "/"} className="btn-primary press mt-4 flex h-[52px] items-center justify-center text-[15px] font-bold">
             계속하기
           </Link>
         </div>

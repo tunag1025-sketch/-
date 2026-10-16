@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Icon, type IconName } from "./Icon";
 
-/** 두 줄 제목: 첫 줄은 진하게, 둘째 줄은 그라데이션 */
+/** 두 줄 제목: 첫 줄은 잉크색, 둘째 줄은 파랑 */
 export function Headline({
   first,
   second,
@@ -14,15 +14,23 @@ export function Headline({
   as?: "h1" | "h2";
 }) {
   return (
-    <Tag className={`leading-[1.18] font-extrabold tracking-[-0.035em] ${className}`}>
+    <Tag className={`leading-[1.2] font-extrabold tracking-[-0.035em] ${className}`}>
       <span className="block">{first}</span>
-      <span className="grad-text block pb-0.5">{second}</span>
+      <span className="block text-blue">{second}</span>
     </Tag>
   );
 }
 
 /** 하위 화면 위쪽 막대: 뒤로 + 가운데 제목 + 오른쪽 버튼들 */
-export function TopBar({ backHref, title, right }: { backHref: string; title?: string; right?: React.ReactNode }) {
+export function TopBar({
+  backHref,
+  title,
+  right,
+}: {
+  backHref: string;
+  title?: React.ReactNode;
+  right?: React.ReactNode;
+}) {
   return (
     <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-3">
       <div>

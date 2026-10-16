@@ -12,7 +12,7 @@ import { VocabRow } from "@/components/VocabRow";
 import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
 import { kataToHira } from "@/lib/furigana";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
-import { type Memory, memoryOf, progressOf } from "@/lib/srs";
+import { isDue, type Memory, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { VocabItem } from "@/lib/types";
 
@@ -86,28 +86,25 @@ function VocabList({ openWord }: { openWord?: string }) {
 
   return (
     <div className="space-y-5 pt-5">
-      <Headline first="노래에서 모은" second="나의 단어장" />
+      <div className="flex items-end justify-between gap-3">
+        <Headline className="text-[30px]" first="노래에서 모은" second="나의 단어장" />
+        {all.length > 0 && (
+          // 오늘 할 게 있으면 모은 단어로 바로 학습, 없으면 학습 설정으로
+          <Link
+            href={today ? reviewHref() : "/study"}
+            aria-label={today ? `모은 단어로 학습하기, 오늘 ${today}개` : "학습 설정"}
+            className={`press mb-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-bold ${
+              today ? "btn-primary" : "btn-ghost"
+            }`}
+          >
+            <Icon name="cards" className="size-[17px]" />
+            학습
+            {today > 0 && <span className="num">{today}</span>}
+          </Link>
+        )}
+      </div>
 
-      {all.length > 0 && (
-        <Link href={today ? reviewHref() : "/study"} className="card press flex items-center gap-3 px-4 py-3.5">
-          <IconCircle name="cards" className="size-11" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[16px] font-semibold">모은 단어로 학습하기</p>
-            <p className="text-[13px] text-ink-3">
-              {today ? (
-                <>
-                  장기기억 단어는 빼고 · 오늘 <span className="num">{today}</span>개
-                </>
-              ) : (
-                "오늘 학습할 단어를 다 했어요"
-              )}
-            </p>
-          </div>
-          <Icon name="chevron" className="size-5 shrink-0 text-ink-3" />
-        </Link>
-      )}
-
-      <div className="grid grid-cols-4 rounded-full bg-muted p-1" role="tablist" aria-label="단어 상태">
+      <div className="seg rounded-[18px]" role="tablist" aria-label="단어 상태">
         {STATUSES.map(([key, label]) => (
           <button
             key={key}
@@ -115,10 +112,10 @@ function VocabList({ openWord }: { openWord?: string }) {
             role="tab"
             aria-selected={status === key}
             onClick={() => setStatus(key)}
-            className="press flex flex-col items-center rounded-full py-1.5 text-[13px] leading-tight font-semibold text-ink-3 aria-selected:bg-surface aria-selected:text-ink aria-selected:shadow-sm"
+            className="seg-item press flex-col gap-0 rounded-[14px] py-1.5 text-[13px] leading-tight"
           >
             {label}
-            <span className="num text-[12px] font-medium">{counts[key]}</span>
+            <span className="num text-[15px]">{counts[key]}</span>
           </button>
         ))}
       </div>
@@ -133,19 +130,19 @@ function VocabList({ openWord }: { openWord?: string }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="단어, 읽는 법, 뜻으로 찾기"
-          className="font-jp input rounded-full pl-11"
+          className="font-jp input h-12 rounded-full py-0 pl-11"
         />
       </div>
 
       {songsWithVocab.length > 1 && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          {[["all", "전체"] as const, ...songsWithVocab.map((id) => [id, songs[id].title] as const)].map(([id, label]) => (
+        <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
+          {[["all", "모든 노래"] as const, ...songsWithVocab.map((id) => [id, songs[id].title] as const)].map(([id, label]) => (
             <button
               key={id}
               type="button"
               onClick={() => setSongFilter(id)}
               aria-pressed={songFilter === id}
-              className="chip press font-jp shrink-0"
+              className={`chip press h-8 shrink-0 ${id === "all" ? "" : "font-jp"}`}
             >
               {label}
             </button>
@@ -172,19 +169,23 @@ function VocabList({ openWord }: { openWord?: string }) {
         </div>
       ) : (
         <ul className="card divide-y divide-line overflow-hidden">
-          {items.map((v) => (
-            <VocabRow
-              key={v.id}
-              item={v}
-              memory={memoryOf(cardOf(cards, v))}
-              sub={songFilter === "all" && songsWithVocab.length > 1 ? songLabel(v) : undefined}
-              onClick={() => setOpenId(v.id)}
-            />
-          ))}
+          {items.map((v) => {
+            const card = cardOf(cards, v);
+            return (
+              <VocabRow
+                key={v.id}
+                item={v}
+                memory={memoryOf(card)}
+                meta={songFilter === "all" && songsWithVocab.length > 1 ? songLabel(v) : undefined}
+                dueToday={!!card && isDue(card, now)}
+                onClick={() => setOpenId(v.id)}
+              />
+            );
+          })}
         </ul>
       )}
 
-      <Sheet open={!!open} onClose={() => setOpenId(null)} title={open ? songs[open.songId]?.title : undefined}>
+      <Sheet open={!!open} onClose={() => setOpenId(null)} title={open ? songs[open.songId]?.title : undefined} icon="music">
         {open && <VocabDetail item={open} song={songs[open.songId]} />}
       </Sheet>
     </div>

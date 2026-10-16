@@ -55,6 +55,14 @@ export function gradeLabel(grade: number): string {
 
 export const isJoyo = (grade: number) => grade >= 1 && grade <= 8;
 
+/** 좁은 칸에 넣는 짧은 이름: 상용 · 초2 / 상용 · 중학 / 인명용 / 상용 외 */
+export function gradeShort(grade: number): string {
+  if (grade >= 1 && grade <= 6) return `상용 · 초${grade}`;
+  if (grade === 8) return "상용 · 중학";
+  if (grade === 9 || grade === 10) return "인명용";
+  return "상용 외";
+}
+
 /** 단어 속 한자들의 정보. 처음 한 번 표를 받아 오는 동안은 null. */
 export function useKanji(word: string): KanjiInfo[] | null {
   const chars = kanjiIn(word);

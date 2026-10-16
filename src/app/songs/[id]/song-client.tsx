@@ -3,18 +3,16 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
-import { LyricLineView } from "@/components/LyricLineView";
+import { LyricLineRange, LyricLineView, patternRange } from "@/components/LyricLineView";
 import { MemoryBar, MemoryLegend } from "@/components/MemoryBar";
-import { CircleButton, Headline, TopBar } from "@/components/PageHeader";
+import { CircleButton, TopBar } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
-import { Stat } from "@/components/Stat";
 import { VocabDetail } from "@/components/VocabDetail";
-import { VocabRow } from "@/components/VocabRow";
+import { MemoryMarkLegend, VocabRow } from "@/components/VocabRow";
 import { useAccount } from "@/lib/account";
 import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-client";
 import type { Artwork } from "@/lib/artwork";
@@ -22,7 +20,7 @@ import { cardOf } from "@/lib/cards";
 import { fileToCover } from "@/lib/image";
 import { isKoreanOnly } from "@/lib/lyrics";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
-import { memoryOf, progressOf } from "@/lib/srs";
+import { isDue, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song } from "@/lib/types";
 import { LineExplain } from "./line-explain";
@@ -78,6 +76,16 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
   );
   const [openLine, setOpenLine] = useState<number | null>(opening.line ?? null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // 노래 헤더가 위 막대 뒤로 지나갔는지
+  const headerRef = useRef<HTMLElement>(null);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setCompact(!e.isIntersecting), { rootMargin: "-72px 0px 0px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const word = openWord ? song.vocab.find((v) => v.id === openWord) : undefined;
   const memory = progressOf(song.vocab, cards);
@@ -97,144 +105,184 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
 
   return (
     <div>
-      <TopBar
-        backHref="/"
-        title="노래"
-        right={<CircleButton icon="trash" label="노래 삭제" onClick={() => setConfirmDelete(true)} />}
-      />
+      {/* 헤더가 화면 위로 지나가면 위 막대에 노래 제목을 띄우고 탭 줄과 함께 유리 바탕으로 고정한다 */}
+      <div
+        className={`pt-safe sticky top-0 z-30 -mx-5 -mt-[env(safe-area-inset-top)] px-5 transition-colors ${
+          compact ? "glass border-x-0 border-t-0 border-b-transparent" : "border-b border-transparent"
+        }`}
+      >
+        <TopBar
+          backHref="/"
+          title={
+            <span className={`font-jp transition-opacity ${compact ? "opacity-100" : "opacity-0"}`} aria-hidden={!compact}>
+              {song.title}
+            </span>
+          }
+          right={<CircleButton icon="trash" label="노래 삭제" onClick={() => setConfirmDelete(true)} />}
+        />
+      </div>
 
-      <section className="mt-2 flex items-start gap-4">
+      <section ref={headerRef} className="mt-2 flex items-center gap-4">
+        <CoverPicker song={song} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap gap-1.5">
-            <Badge tone="blue">{song.level}</Badge>
-            {song.isDemo && <Badge>데모곡</Badge>}
+            <span className="num inline-flex h-[22px] items-center rounded-full bg-blue-soft px-[9px] text-[12px] font-semibold text-blue">
+              {song.level}
+            </span>
+            {song.isDemo && (
+              <span className="inline-flex h-[22px] items-center rounded-full bg-muted px-[9px] text-[12px] font-semibold text-ink-2">
+                데모곡
+              </span>
+            )}
           </div>
-          <Headline
-            className="font-jp mt-3 text-[28px]"
-            first={song.title}
-            second={<span className="font-sans">{song.artist || "아티스트 미상"}</span>}
-          />
+          <h1 className="font-jp mt-2 text-[26px] leading-[1.25] font-extrabold tracking-[-0.02em] break-words">
+            {song.title}
+          </h1>
+          <p className="mt-0.5 truncate text-[15px] font-semibold text-blue">{song.artist || "아티스트 미상"}</p>
         </div>
-        <CoverPicker song={song} />
       </section>
-      {song.summary && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{song.summary}</p>}
+      {song.summary && <p className="mt-4 text-[15px] leading-[1.65] text-pretty text-ink-2">{song.summary}</p>}
 
       {song.status === "ready" && total > 0 && (
-        <div className="card mt-5 px-2 pt-4 pb-3">
-          <div className="grid grid-cols-3">
-            <Stat value={total} label="단어" />
-            <Stat value={memory.short} label="단기기억" />
-            <Stat value={memory.long} label="장기기억" />
+        <div className="card mt-5 px-[18px] pt-[18px] pb-4">
+          <div className="flex items-baseline justify-between">
+            <p className="text-[13px] font-semibold text-ink-2">기억한 단어</p>
+            <p className="text-[13px] text-ink-3">
+              <b className="num text-[20px] font-semibold tracking-[-0.02em] text-ink">{memory.long + memory.short}</b> /{" "}
+              <span className="num">{total}</span>
+            </p>
           </div>
-          <div className="mx-2 mt-4">
-            <MemoryBar total={total} long={memory.long} short={memory.short} className="h-2" />
-            <div className="mt-2 flex items-center justify-between">
-              <span className="num text-[12px] font-semibold text-ink-3">
-                {memory.long + memory.short}/{total}
-              </span>
-              <MemoryLegend />
-            </div>
-          </div>
+          <MemoryBar total={total} long={memory.long} short={memory.short} className="mt-2.5 h-2" />
+          <MemoryLegend className="mt-2" counts={{ long: memory.long, short: memory.short }} />
           <Link
             href={reviewHref(song.id)}
-            className="btn-primary press mx-2 mt-4 flex items-center justify-center gap-1.5 py-3.5 text-[15px] font-semibold"
+            className="btn-primary press mt-4 flex h-[52px] items-center justify-center gap-2 text-[15px] font-bold"
           >
             이 노래 단어 학습하기
-            {today > 0 && <span className="num rounded-full bg-white/20 px-2 py-0.5 text-[13px]">오늘 {today}개</span>}
+            {today > 0 && (
+              <span className="num inline-flex h-6 items-center rounded-full bg-white/22 px-[9px] text-[13px] font-semibold">
+                오늘 {today}
+              </span>
+            )}
           </Link>
         </div>
       )}
 
       <AnalysisStatus song={song} />
 
-      <div className="sticky top-0 z-20 -mx-4 mt-6 mb-3 bg-bg/85 px-4 py-2 backdrop-blur-md">
-        <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
-          <div className="flex gap-1.5" role="tablist">
-            {(
-              [
-                ["lyrics", "가사", null],
-                ["vocab", "단어", total],
-                ["grammar", "문법", song.grammar.length],
-              ] as const
-            ).map(([key, label, count]) => (
-              <button
-                key={key}
-                role="tab"
-                aria-selected={tab === key}
-                onClick={() => setTab(key)}
-                className="chip press shrink-0 px-3.5 whitespace-nowrap"
-              >
-                {label}
-                {count ? <span className="num text-[13px] opacity-75">{count}</span> : null}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={furigana}
-            onClick={() => setSettings({ furigana: !furigana })}
-            className="press ml-auto flex shrink-0 items-center gap-2 py-2 pl-1 text-[13px] font-medium text-ink-2"
-          >
-            <span className="font-jp whitespace-nowrap">ふりがな</span>
-            <span
-              className={`relative h-6 w-10 rounded-full transition-colors ${furigana ? "bg-blue" : "bg-ink-3/45"}`}
-              aria-hidden
+      <div
+        className={`sticky top-[calc(env(safe-area-inset-top)+65px)] z-20 -mx-5 mt-6 mb-3 flex items-center gap-3 px-5 py-2 ${
+          compact ? "glass border-x-0 border-t-0 border-b-line" : "bg-bg"
+        }`}
+      >
+        <div className="seg flex-1" role="tablist" aria-label="노래 보기">
+          {(
+            [
+              ["lyrics", "가사", null],
+              ["vocab", "단어", total],
+              ["grammar", "문법", song.grammar.length],
+            ] as const
+          ).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className="seg-item press whitespace-nowrap"
             >
-              <span
-                className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${
-                  furigana ? "translate-x-4" : ""
-                }`}
-              />
-            </span>
-          </button>
+              {label}
+              {count ? <span className="num text-[13px] font-medium text-ink-3">{count}</span> : null}
+            </button>
+          ))}
         </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={furigana}
+          onClick={() => setSettings({ furigana: !furigana })}
+          className="press flex shrink-0 items-center gap-2 py-2 text-[13px] font-medium text-ink-2"
+        >
+          <span className="font-jp whitespace-nowrap">ふりがな</span>
+          <span
+            className={`relative h-6 w-10 rounded-full transition-colors ${furigana ? "bg-blue" : "bg-ink-3/45"}`}
+            aria-hidden
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${
+                furigana ? "translate-x-4" : ""
+              }`}
+            />
+          </span>
+        </button>
       </div>
 
       {tab === "lyrics" && (
-        <div className="card px-4 pt-3 pb-4">
+        <div className="card px-2.5 pt-2.5 pb-3">
           {song.status === "ready" && total > 0 && (
-            <p className="mb-2 text-[13px] leading-relaxed text-ink-3">
-              색칠된 단어를 누르면 뜻과 예문을, 줄 끝 버튼을 누르면 그 줄 해설을 볼 수 있어요.
-              {koreanLines > 0 && ` 같이 붙여넣은 한글 발음·해석 ${koreanLines}줄은 숨겼어요.`}
+            <p className="mx-2 mt-1 mb-1.5 flex flex-wrap items-center gap-1.5 text-[12px] leading-normal text-ink-3">
+              <span className="h-2 w-[22px] shrink-0 rounded-sm bg-[var(--mark)]" aria-hidden />
+              단어를 누르면 뜻, <Icon name="sparkle" className="size-[13px]" />를 누르면 줄 해설
+            </p>
+          )}
+          {koreanLines > 0 && (
+            <p className="mx-2 mb-1.5 text-[12px] leading-normal text-ink-3">
+              같이 붙여넣은 한글 발음·해석 {koreanLines}줄은 숨겼어요.
             </p>
           )}
           {song.lines.map((line, i) =>
             // 예전에 한글 발음·해석까지 붙여넣은 노래는 그 줄을 숨긴다 (새 노래는 추가할 때 뺀다).
             isKoreanOnly(line.text) ? null : line.text.trim() ? (
               <div key={i}>
-                <div className="flex items-start gap-2">
-                  <p className="flex-1 text-[19px] leading-[2.3] text-pretty">
+                <div className="grid grid-cols-[1fr_32px] items-start gap-1.5 px-2">
+                  <p className="font-jp lyric text-[19px] leading-[2.3]">
                     <LyricLineView line={line} index={i} vocab={song.vocab} onWord={setOpenWord} furigana={furigana} />
                   </p>
                   <button
                     type="button"
                     onClick={() => setOpenLine(openLine === i ? null : i)}
-                    className={`press mt-3 grid size-8 shrink-0 place-items-center rounded-full ${
-                      openLine === i ? "btn-primary" : "bg-muted text-ink-3"
+                    className={`press mt-3.5 grid size-8 place-items-center rounded-full ${
+                      openLine === i ? "btn-primary" : "border border-line text-ink-3"
                     }`}
                     aria-label="이 줄 해설 보기"
                     aria-expanded={openLine === i}
                   >
-                    <Icon name="sparkle" className="size-4" />
+                    <Icon name="sparkle" className="size-[15px]" />
                   </button>
                 </div>
                 {openLine === i && <LineExplain song={song} index={i} />}
               </div>
             ) : (
-              <div key={i} className="h-5" />
+              <div key={i} className="h-3.5" />
             ),
           )}
         </div>
       )}
 
       {tab === "vocab" && (
-        <ul className="card divide-y divide-line overflow-hidden">
-          {total === 0 && <EmptyAnalysis song={song} />}
-          {song.vocab.map((v) => (
-            <VocabRow key={v.id} item={v} memory={memoryOf(cardOf(cards, v))} onClick={() => setOpenWord(v.id)} />
-          ))}
-        </ul>
+        <>
+          {total > 0 && (
+            <div className="mx-1 mb-2.5 flex items-center justify-between text-[12px] font-medium text-ink-3">
+              <span>가사에 나온 순서</span>
+              <MemoryMarkLegend />
+            </div>
+          )}
+          <ul className="card divide-y divide-line overflow-hidden">
+            {total === 0 && <EmptyAnalysis song={song} />}
+            {song.vocab.map((v) => {
+              const card = cardOf(cards, v);
+              return (
+                <VocabRow
+                  key={v.id}
+                  item={v}
+                  memory={memoryOf(card)}
+                  dueToday={!!card && isDue(card, now)}
+                  onClick={() => setOpenWord(v.id)}
+                />
+              );
+            })}
+          </ul>
+        </>
       )}
 
       {tab === "grammar" && (
@@ -245,22 +293,27 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
             </li>
           )}
           {song.grammar.map((g, i) => (
-            <li key={i} className="card px-5 py-4">
-              <p className="font-jp text-[21px] font-bold text-blue">{g.pattern}</p>
-              <p className="mt-0.5 text-[15px] font-semibold">{g.meaning}</p>
-              <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{g.explanation}</p>
+            <li key={i} className="card p-[18px]">
+              <p className="flex flex-wrap items-baseline gap-x-2.5">
+                <span className="font-jp text-[22px] font-bold text-blue">{g.pattern}</span>
+                <span className="text-[15px] font-bold">{g.meaning}</span>
+              </p>
               {song.lines[g.line] && (
-                <p className="iris mt-3 rounded-2xl px-3.5 py-2 text-[16px] leading-[2.1]">
-                  <LyricLineView line={song.lines[g.line]} index={g.line} vocab={[]} furigana={furigana} />
+                <p className="iris font-jp lyric mt-3 rounded-2xl px-3.5 py-0.5 text-[17px] leading-[2.25]">
+                  <LyricLineRange
+                    line={song.lines[g.line]}
+                    range={patternRange(g.pattern, song.lines[g.line].text)}
+                    furigana={furigana}
+                  />
                 </p>
               )}
+              <p className="mt-3 text-[14px] leading-[1.65] text-ink-2">{g.explanation}</p>
             </li>
           ))}
         </ul>
       )}
 
-
-      <Sheet open={!!word} onClose={() => setOpenWord(null)} title={song.title}>
+      <Sheet open={!!word} onClose={() => setOpenWord(null)} title={song.title} icon="music">
         {word && <VocabDetail item={word} song={song} />}
       </Sheet>
 
@@ -269,16 +322,16 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
           <IconCircle name="trash" tone="danger" className="size-16" />
           <p className="font-jp mt-3 text-[20px] font-bold">{song.title}</p>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
-            이 노래와 단어장, 학습 기록이 모두 지워져요.
+            이 노래와 단어장이 지워져요. 되돌릴 수 없어요.
             <br />
-            되돌릴 수 없어요.
+            단어 학습 기록은 다른 노래에도 쓰여서 남아요.
           </p>
         </div>
         <div className="mt-6 grid grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={() => setConfirmDelete(false)}
-            className="btn-ghost press py-3.5 text-[15px] font-semibold"
+            className="btn-ghost press h-[52px] text-[15px] font-semibold"
           >
             취소
           </button>
@@ -288,7 +341,7 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
               removeSong(song.id);
               router.replace("/");
             }}
-            className="press rounded-full bg-danger py-3.5 text-[15px] font-semibold text-white"
+            className="press h-[52px] rounded-full bg-danger text-[15px] font-semibold text-white"
           >
             삭제
           </button>
@@ -339,7 +392,7 @@ function CoverPicker({ song }: { song: Song }) {
   return (
     <>
       <button type="button" onClick={open} aria-label="커버 바꾸기" className="press relative shrink-0">
-        <SongCover song={song} className="size-[76px] rounded-[26px]" />
+        <SongCover song={song} className="size-[84px] rounded-[28px]" />
         <span className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full border-2 border-bg bg-surface text-ink-2 shadow-sm">
           <Icon name="camera" className="size-3.5" />
         </span>
@@ -389,7 +442,7 @@ function CoverPicker({ song }: { song: Song }) {
           <button
             type="button"
             onClick={() => input.current?.click()}
-            className="btn-primary press py-3.5 text-[15px] font-semibold"
+            className="btn-primary press h-[52px] text-[15px] font-semibold"
           >
             사진 직접 고르기
           </button>
@@ -397,7 +450,7 @@ function CoverPicker({ song }: { song: Song }) {
             <button
               type="button"
               onClick={() => choose(undefined)}
-              className="btn-ghost press py-3.5 text-[15px] font-semibold"
+              className="btn-ghost press h-[52px] text-[15px] font-semibold"
             >
               커버 지우고 랜덤 그림 쓰기
             </button>
@@ -415,7 +468,7 @@ function AnalysisStatus({ song }: { song: Song }) {
 
   if (song.status === "analyzing" && inFlight) {
     return (
-      <div className="iris-card mt-5 flex items-center gap-3 px-4 py-4">
+      <div className="card mt-5 flex items-center gap-3 px-4 py-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-blue-soft text-blue">
           <Spinner className="size-5" />
         </span>
@@ -439,7 +492,7 @@ function AnalysisStatus({ song }: { song: Song }) {
       {needLogin ? (
         <Link
           href={`/login?next=${encodeURIComponent(`/songs/${song.id}`)}`}
-          className="btn-primary press mt-3 flex w-full items-center justify-center gap-1.5 py-3 text-[14px] font-semibold"
+          className="btn-primary press mt-3 flex h-[52px] w-full items-center justify-center gap-1.5 text-[15px] font-semibold"
         >
           <Icon name="user" className="size-4" /> 로그인하기
         </Link>
@@ -447,7 +500,7 @@ function AnalysisStatus({ song }: { song: Song }) {
         <button
           type="button"
           onClick={() => startAnalysis(song.id, { retokenize: true })}
-          className="btn-primary press mt-3 flex w-full items-center justify-center gap-1.5 py-3 text-[14px] font-semibold"
+          className="btn-primary press mt-3 flex h-[52px] w-full items-center justify-center gap-1.5 text-[15px] font-semibold"
         >
           <Icon name="refresh" className="size-4" /> 단어장 다시 만들기
         </button>

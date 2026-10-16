@@ -12,7 +12,12 @@ import { useAccount } from "@/lib/account";
 import { pickData, useStore } from "@/lib/store";
 import { clearLocalData, flush, type SyncStatus, syncNow, useSyncStatus } from "@/lib/sync";
 
-type Invite = { code: string; createdAt: string; usedBy: string | null; usedAt: string | null };
+type Invite = {
+  code: string;
+  createdAt: string;
+  usedBy: string | null;
+  usedAt: string | null;
+};
 
 export function SettingsClient() {
   return (
@@ -32,6 +37,10 @@ function Settings() {
       <Backup />
     </div>
   );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-2 ml-1 text-[13px] font-semibold text-ink-3">{children}</h2>;
 }
 
 function timeAgo(ts: number, now: number) {
@@ -70,10 +79,10 @@ function AccountSection() {
 
   return (
     <section>
-      <h2 className="text-[19px] font-bold">계정</h2>
+      <SectionLabel>계정</SectionLabel>
       {user ? (
-        <div className="card mt-3 px-4 py-4">
-          <div className="flex items-center gap-3">
+        <div className="card divide-y divide-line overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-4">
             {user.image ? (
               // 프로필 사진은 Google·카카오 주소라 그대로 쓴다.
               // eslint-disable-next-line @next/next/no-img-element
@@ -104,29 +113,31 @@ function AccountSection() {
               <Icon name="refresh" className={`size-[18px] ${status === "syncing" ? "animate-spin" : ""}`} />
             </button>
           </div>
-          <p className="mt-3 text-[13px] leading-relaxed text-ink-3">
+          <p className="px-4 py-3 text-[13px] leading-relaxed text-ink-3">
             학습 기록이 계정에 저장돼서 다른 기기에서 로그인해도 이어서 할 수 있어요.
           </p>
-          {leaving === "pending" ? (
-            <div className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-[14px] text-danger">
-              <p>아직 계정에 올리지 못한 기록이 있어요. 인터넷에 연결한 뒤 다시 로그아웃해 주세요.</p>
-              <button type="button" onClick={() => logout(true)} className="mt-2 font-semibold underline">
-                그래도 로그아웃 (못 올린 기록은 사라져요)
+          <div className="p-4">
+            {leaving === "pending" ? (
+              <div className="rounded-2xl bg-danger-soft px-4 py-3 text-[14px] text-danger">
+                <p>아직 계정에 올리지 못한 기록이 있어요. 인터넷에 연결한 뒤 다시 로그아웃해 주세요.</p>
+                <button type="button" onClick={() => logout(true)} className="mt-2 font-semibold underline">
+                  그래도 로그아웃 (못 올린 기록은 사라져요)
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={leaving === "busy"}
+                onClick={() => logout()}
+                className="press h-[52px] w-full rounded-full border border-line bg-surface text-[15px] font-semibold text-ink-2 disabled:opacity-60"
+              >
+                {leaving === "busy" ? "기록을 올리는 중…" : "로그아웃"}
               </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={leaving === "busy"}
-              onClick={() => logout()}
-              className="btn-ghost press mt-4 w-full py-3 text-[15px] font-semibold text-ink-2 disabled:opacity-60"
-            >
-              {leaving === "busy" ? "기록을 올리는 중…" : "로그아웃"}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       ) : (
-        <div className="card mt-3 px-4 py-4">
+        <div className="card p-4">
           <p className="mb-4 text-[14px] leading-relaxed text-ink-2">
             로그인하면 AI 단어장을 만들 수 있고, 여러 기기에서 같은 기록을 써요. 지금 기록도 계정으로 옮겨져요.
           </p>
@@ -170,7 +181,11 @@ function Invites() {
     const url = linkOf(code);
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Utango 초대", text: "노래로 일본어 공부하는 앱이에요. 이 링크로 가입해 줘!", url });
+        await navigator.share({
+          title: "Utango 초대",
+          text: "노래로 일본어 공부하는 앱이에요. 이 링크로 가입해 줘!",
+          url,
+        });
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -181,57 +196,73 @@ function Invites() {
   }
 
   async function remove(code: string) {
-    await fetch(`/api/invites?code=${encodeURIComponent(code)}`, { method: "DELETE" }).catch(() => {});
+    await fetch(`/api/invites?code=${encodeURIComponent(code)}`, {
+      method: "DELETE",
+    }).catch(() => {});
     if (fresh === code) setFresh(null);
     void load();
   }
 
   return (
     <section>
-      <h2 className="text-[19px] font-bold">친구 초대</h2>
-      <p className="mt-1 text-[14px] leading-relaxed text-ink-3">
-        초대 링크를 받은 사람만 가입할 수 있어요. 링크 하나로 한 사람이 가입해요.
-      </p>
-      <button
-        type="button"
-        onClick={create}
-        className="btn-primary press mt-3 flex w-full items-center justify-center gap-1.5 py-3.5 text-[15px] font-semibold"
-      >
-        <Icon name="plus" className="size-4" /> 초대 링크 만들기
-      </button>
-      {fresh && (
-        <div className="iris mt-3 rounded-2xl px-4 py-3">
-          <p className="truncate text-[14px] font-medium">{linkOf(fresh)}</p>
-          <button type="button" onClick={() => share(fresh)} className="mt-1.5 text-[14px] font-semibold text-blue">
-            {copied ? "복사했어요" : "보내기 · 복사"}
+      <SectionLabel>친구 초대</SectionLabel>
+      <div className="card divide-y divide-line overflow-hidden">
+        <div className="p-4">
+          <p className="text-[13px] leading-relaxed text-ink-3">
+            초대 링크를 받은 사람만 가입할 수 있어요. 링크 하나로 한 사람이 가입해요.
+          </p>
+          <button
+            type="button"
+            onClick={create}
+            className="btn-primary press mt-3 flex h-[52px] w-full items-center justify-center gap-1.5 text-[15px] font-bold"
+          >
+            <Icon name="plus" className="size-4" /> 초대 링크 만들기
           </button>
+          {fresh && (
+            <div className="iris mt-3 rounded-2xl px-4 py-3">
+              <p className="truncate text-[14px] font-medium">{linkOf(fresh)}</p>
+              <button type="button" onClick={() => share(fresh)} className="mt-1.5 text-[14px] font-semibold text-blue">
+                {copied ? "복사했어요" : "보내기 · 복사"}
+              </button>
+            </div>
+          )}
+          {error && <p className="mt-3 text-[14px] text-danger">{error}</p>}
         </div>
-      )}
-      {error && <p className="mt-3 text-[14px] text-danger">{error}</p>}
-      {invites && invites.length > 0 && (
-        <ul className="card mt-3 divide-y divide-line overflow-hidden">
-          {invites.map((inv) => (
-            <li key={inv.code} className="flex items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-medium">
-                  {inv.usedBy ? `${inv.usedBy} 님이 가입했어요` : "아직 안 쓴 링크"}
-                </p>
-                <p className="num text-[12px] text-ink-3">{new Date(inv.createdAt).toLocaleDateString("ko-KR")} 만듦</p>
-              </div>
-              {!inv.usedBy && (
-                <>
-                  <button type="button" onClick={() => share(inv.code)} className="text-[13px] font-semibold text-blue">
-                    보내기
-                  </button>
-                  <button type="button" onClick={() => remove(inv.code)} className="text-[13px] font-semibold text-ink-3">
-                    지우기
-                  </button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+        {invites && invites.length > 0 && (
+          <ul className="divide-y divide-line">
+            {invites.map((inv) => (
+              <li key={inv.code} className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-medium">
+                    {inv.usedBy ? `${inv.usedBy} 님이 가입했어요` : "아직 안 쓴 링크"}
+                  </p>
+                  <p className="num text-[12px] text-ink-3">
+                    {new Date(inv.createdAt).toLocaleDateString("ko-KR")} 만듦
+                  </p>
+                </div>
+                {!inv.usedBy && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => share(inv.code)}
+                      className="text-[13px] font-semibold text-blue"
+                    >
+                      보내기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(inv.code)}
+                      className="text-[13px] font-semibold text-ink-3"
+                    >
+                      지우기
+                    </button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }
@@ -271,23 +302,25 @@ function Backup() {
     if (!file) return;
     const data = parseBackup(await file.text());
     if (!data) {
-      setMessage({ ok: false, text: "Utango 백업 파일이 아니에요. 내보내기로 만든 파일을 골라 주세요." });
+      setMessage({
+        ok: false,
+        text: "Utango 백업 파일이 아니에요. 내보내기로 만든 파일을 골라 주세요.",
+      });
       return;
     }
     useStore.getState().importData(data);
     const songs = Object.keys(data.songs ?? {}).length;
     const cards = Object.keys(data.cards ?? {}).length;
-    setMessage({ ok: true, text: `노래 ${songs}곡, 단어 기록 ${cards}개를 불러와 지금 기록과 합쳤어요.` });
+    setMessage({
+      ok: true,
+      text: `노래 ${songs}곡, 단어 기록 ${cards}개를 불러와 지금 기록과 합쳤어요.`,
+    });
   }
 
   return (
     <section>
-      <h2 className="text-[19px] font-bold">백업</h2>
-      <p className="mt-1 text-[14px] leading-relaxed text-ink-3">
-        파일로 내보내 두면 브라우저 데이터를 지우거나 기기를 바꿔도 다시 불러올 수 있어요. 로그인하지 않으면 기록은 이 기기에만
-        있어요.
-      </p>
-      <div className="card mt-3 divide-y divide-line overflow-hidden">
+      <SectionLabel>백업</SectionLabel>
+      <div className="card divide-y divide-line overflow-hidden">
         <button type="button" onClick={exportFile} className="press flex w-full items-center gap-3 px-4 py-4 text-left">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-blue-soft text-blue">
             <Icon name="download" className="size-5" />
@@ -315,6 +348,10 @@ function Backup() {
           <Icon name="chevron" className="size-5 shrink-0 text-ink-3" />
         </button>
       </div>
+      <p className="mx-1 mt-2 text-[13px] leading-relaxed text-ink-3">
+        파일로 내보내 두면 브라우저 데이터를 지우거나 기기를 바꿔도 다시 불러올 수 있어요. 로그인하지 않으면 기록은 이
+        기기에만 있어요.
+      </p>
       <input ref={input} type="file" accept="application/json,.json" onChange={importFile} className="hidden" />
       {message && (
         <p role="status" className={`mt-3 text-[14px] ${message.ok ? "text-ink-2" : "text-danger"}`}>

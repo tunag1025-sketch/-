@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Layout: 하얀 바탕 위에 부드러운 카드, 제목 둘째 줄은 블루→바이올렛→핑크 그라데이션,
- * 큰 숫자와 아이콘 동그라미로 상태를 보여 준다. 탭바는 떠 있는 유리 동그라미 + 파란 + 버튼.
+ * Layout: 하얀 바탕 위에 부드러운 카드, 제목 둘째 줄과 주 버튼은 단색 파랑,
+ * 큰 숫자로 상태를 보여 준다. 그라데이션은 진척도 막대와 가사 맥락 블록에만. 탭바는 떠 있는 유리 동그라미 + 파란 + 버튼.
  */
 :root {
   --bg: #f7f8fc;
@@ -18,12 +18,14 @@
   --pink: #ff5c97;
   --yellow: #ffb81f;
   --danger: #d93a42;
-  --mark: #dde8ff;
+  --danger-soft: #fcecee;
+  --violet-soft: #f1edff;
+  /* 주 버튼 단색 */
+  --btn: #1a5ff2;
+  --mark: #d6e4ff;
   --mark-ink: #0f47c7;
   --grad-text: linear-gradient(90deg, #1a5ff2 0%, #6f6cf5 52%, #d0609c 100%);
   --grad-soft: linear-gradient(120deg, #e8f1ff 0%, #f0ebff 52%, #ffe9f2 100%);
-  --grad-edge: linear-gradient(120deg, #a9c9ff, #cdbdff 52%, #ffc6dc);
-  --grad-btn: linear-gradient(180deg, #3b7bff 0%, #1a5cf0 100%);
   --shadow: 0 6px 24px rgb(31 59 120 / 0.07);
   --glass: rgb(255 255 255 / 0.72);
   --glass-edge: rgb(255 255 255 / 0.9);
@@ -47,12 +49,13 @@
   --pink: #ff74a8;
   --yellow: #ffcd5a;
   --danger: #ff6b6f;
-  --mark: #22336a;
+  --danger-soft: #33181e;
+  --violet-soft: #231f40;
+  --btn: #3471f5;
+  --mark: #26386f;
   --mark-ink: #d3e2ff;
   --grad-text: linear-gradient(90deg, #6ea0ff 0%, #a79dff 52%, #ffaccd 100%);
   --grad-soft: linear-gradient(120deg, #16213d 0%, #201b3a 52%, #2c1929 100%);
-  --grad-edge: linear-gradient(120deg, #34518f, #4b3f87 52%, #7a3d5c);
-  --grad-btn: linear-gradient(180deg, #5f95ff 0%, #2f6dff 100%);
   --shadow: 0 6px 24px rgb(0 0 0 / 0.35);
   --glass: rgb(28 32 46 / 0.72);
   --glass-edge: rgb(255 255 255 / 0.08);
@@ -84,6 +87,9 @@
   --color-pink: var(--pink);
   --color-yellow: var(--yellow);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-violet-soft: var(--violet-soft);
+  --color-btn: var(--btn);
   /* 한글·본문: Pretendard / 영문·숫자: Outfit / 가사·일본어: 시스템 일본어 고딕 */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Hiragino Sans", "Noto Sans KR", "Noto Sans JP", sans-serif;
@@ -123,10 +129,10 @@ ruby {
 }
 
 rt {
-  font-size: 0.5em;
+  font-size: 0.55em;
   color: var(--ink-3);
   font-weight: 500;
-  letter-spacing: 0;
+  letter-spacing: 0.04em;
   user-select: none;
 }
 
@@ -144,14 +150,6 @@ rt {
   letter-spacing: -0.03em;
 }
 
-/* 제목 둘째 줄 같은 그라데이션 글씨 */
-@utility grad-text {
-  background: var(--grad-text);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 @utility card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -159,27 +157,15 @@ rt {
   box-shadow: var(--shadow);
 }
 
-/* 무지갯빛 테두리 카드 */
-@utility iris-card {
-  border: 1.5px solid transparent;
-  border-radius: 24px;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    var(--grad-edge) border-box;
-  box-shadow: var(--shadow);
-}
-
 @utility iris {
   background: var(--grad-soft);
 }
 
+/* 주 버튼: 단색, 그림자 없음 */
 @utility btn-primary {
-  background: var(--grad-btn);
+  background: var(--btn);
   color: #ffffff;
   border-radius: 9999px;
-  box-shadow:
-    0 8px 20px rgb(31 107 255 / 0.28),
-    inset 0 1px 0 rgb(255 255 255 / 0.35);
 }
 
 @utility btn-ghost {
@@ -225,44 +211,90 @@ rt {
   }
 }
 
-/* 선택 칩: 테두리만 있다가 고르면 파란 테두리 + 연한 파랑 */
+/* 목록을 거르는 필터 칩. 고르면 잉크색으로 채운다 (탭바의 파랑과 겹치지 않게). */
 @utility chip {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  height: 34px;
   border-radius: 9999px;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink-2);
-  padding: 0.5rem 0.95rem;
+  padding: 0 0.875rem;
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
   &[aria-pressed="true"],
   &[aria-selected="true"] {
-    border-color: var(--blue);
-    background: var(--blue-soft);
-    color: var(--blue);
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--bg);
     font-weight: 600;
   }
+}
+
+/* 하나만 고르는 탭(세그먼트): 회색 바탕 안에서 고른 칸만 흰 알약 */
+@utility seg {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  border-radius: 9999px;
+  background: var(--muted);
+  padding: 4px;
+}
+
+@utility seg-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 36px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-3);
+  transition:
+    background-color 120ms,
+    color 120ms;
+  &[aria-selected="true"],
+  &[aria-pressed="true"],
+  &[aria-checked="true"] {
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 700;
+    box-shadow: 0 1px 4px rgb(31 59 120 / 0.12);
+  }
+}
+
+/* 가사 본문: 가사 띄어쓰기에서만 줄을 바꿔 "がひ/とつ"처럼 잘리지 않게 */
+@utility lyric {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  letter-spacing: 0.01em;
 }
 
 /* 가사 속 단어장 단어: 연한 파랑 형광펜. 후리가나는 빼고 본문 글자 아래쪽만 칠한다. */
 .vocab-word {
   color: var(--mark-ink);
+  font-weight: 600;
   text-decoration-line: underline;
   text-decoration-color: var(--mark);
-  text-decoration-thickness: 0.48em;
-  text-underline-offset: -0.34em;
+  text-decoration-thickness: 0.36em;
+  text-underline-offset: -0.24em;
   text-decoration-skip-ink: none;
 }
 
 /* 복습 카드에서 가린 단어 */
 .focus-word {
-  background: var(--grad-btn);
+  background: var(--btn);
   color: #ffffff;
   border-radius: 6px;
   padding: 0 0.15em;
   font-weight: 700;
+}
+.focus-word rt {
+  color: rgb(255 255 255 / 0.85);
 }
 
 @media (prefers-reduced-motion: reduce) {

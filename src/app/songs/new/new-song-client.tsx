@@ -82,111 +82,117 @@ function NewSongForm({ initialQuery }: { initialQuery: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6 pb-4">
+    <form onSubmit={submit} className="pb-4">
       <TopBar backHref="/" title="노래 추가" />
 
-      <Headline className="text-[28px]" first="어떤 노래로" second="공부해 볼까요?" />
+      <div className="mt-2 space-y-[30px]">
+        <Headline className="text-[28px]" first="어떤 노래로" second="공부해 볼까요?" />
 
-      <SongSearch
-        initialQuery={initialQuery}
-        picked={picked}
-        onPick={(hit) => {
-          setPicked(hit);
-          setTitle(hit.title);
-          setArtist(hit.artist);
-        }}
-        onClear={() => setPicked(null)}
-      />
+        <SongSearch
+          initialQuery={initialQuery}
+          picked={picked}
+          onPick={(hit) => {
+            setPicked(hit);
+            setTitle(hit.title);
+            setArtist(hit.artist);
+          }}
+          onClear={() => setPicked(null)}
+        />
 
-      <div className="space-y-4">
-        <Field label="노래 제목" htmlFor="title">
-          <input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="예: 夜に駆ける"
-            className="font-jp input"
-            maxLength={200}
+        <section>
+          <SectionTitle>노래 정보</SectionTitle>
+          <div className="divide-y divide-line overflow-hidden rounded-[20px] border border-line bg-surface transition-colors focus-within:border-blue">
+            <FormRow label="제목" htmlFor="title">
+              <input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="예: 夜に駆ける"
+                className="font-jp min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-ink-3"
+                maxLength={200}
+                required
+              />
+            </FormRow>
+            <FormRow label="가수" htmlFor="artist">
+              <input
+                id="artist"
+                value={artist}
+                onChange={(e) => setArtist(e.target.value)}
+                placeholder="선택 · 예: YOASOBI"
+                className="font-jp min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-ink-3"
+                maxLength={200}
+              />
+            </FormRow>
+          </div>
+        </section>
+
+        <section>
+          <SectionTitle id="level-label">내 일본어 수준</SectionTitle>
+          <div className="seg grid-cols-6" role="radiogroup" aria-labelledby="level-label">
+            {LEVELS.map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="radio"
+                aria-checked={level === l}
+                onClick={() => setLevel(l)}
+                className={`seg-item press min-h-[38px] aria-checked:text-blue ${l === "입문" ? "" : "num"}`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+          <p className="mx-1 mt-2 text-[13px] text-ink-3">{LEVEL_HINT[level]}</p>
+        </section>
+
+        <section>
+          <div className="mb-2.5 flex items-baseline justify-between gap-3">
+            <h2 className="flex items-baseline gap-2 text-[16px] font-bold">
+              <label htmlFor="lyrics">가사</label>
+              {lineCount > 0 && <span className="num text-[13px] font-medium text-ink-3">{lineCount}줄</span>}
+            </h2>
+            {title.trim() && (
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(`${title.trim()} ${artist.trim()} 歌詞`.replace(/\s+/g, " "))}`}
+                target="_blank"
+                rel="noreferrer"
+                className="press flex items-center gap-1 text-[13px] font-semibold text-blue"
+              >
+                가사 찾아보기 <Icon name="arrowUpRight" className="size-3.5" />
+              </a>
+            )}
+          </div>
+          <textarea
+            id="lyrics"
+            value={lyrics}
+            onChange={(e) => setLyrics(e.target.value)}
+            onPaste={onPaste}
+            placeholder={"가사를 그대로 붙여넣어 주세요.\n\n例)\n夜明け前の空に 小さな星がひとつ\n眠れない僕は 窓を開けて君を思う"}
+            rows={8}
+            className="font-jp input min-h-[200px] resize-y rounded-[20px] px-4 py-3.5 text-[16px] leading-[1.75]"
             required
           />
-        </Field>
-        <Field label="가수" hint="선택" htmlFor="artist">
-          <input
-            id="artist"
-            value={artist}
-            onChange={(e) => setArtist(e.target.value)}
-            placeholder="예: YOASOBI"
-            className="font-jp input"
-            maxLength={200}
-          />
-        </Field>
+          {koreanLines > 0 && (
+            <p className="mt-2 flex items-start gap-1.5 rounded-2xl bg-blue-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
+              <Icon name="info" className="mt-0.5 size-4 shrink-0 text-blue" />
+              {lineCount > 0
+                ? `한글 발음·해석 ${koreanLines}줄은 빼고 일본어 가사 ${lineCount}줄로 만들어요.`
+                : "일본어 가사가 없어요. 한글 발음이나 해석만으로는 단어장을 만들 수 없어요."}
+            </p>
+          )}
+          <p className="mx-1 mt-2 text-[13px] leading-[1.55] text-ink-3">
+            가사는 직접 찾아 붙여넣어 주세요. 내 기기(로그인하면 내 계정)에만 저장되고, 단어장을 만들 때만 AI에 보내져요.
+          </p>
+        </section>
+
+        {error && <p className="rounded-2xl bg-danger-soft px-4 py-3 text-[14px] font-medium text-danger">{error}</p>}
       </div>
 
-      <fieldset>
-        <legend className="mb-2.5 text-[15px] font-semibold">내 일본어 수준</legend>
-        <div className="grid grid-cols-6 gap-1.5">
-          {LEVELS.map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLevel(l)}
-              aria-pressed={level === l}
-              className="chip press num justify-center px-0 text-[15px]"
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-[13px] text-ink-3">{LEVEL_HINT[level]}</p>
-      </fieldset>
-
-      <Field
-        label="가사"
-        hint={lineCount ? `${lineCount}줄` : undefined}
-        htmlFor="lyrics"
-        action={
-          title.trim() ? (
-            <a
-              href={`https://www.google.com/search?q=${encodeURIComponent(`${title.trim()} ${artist.trim()} 歌詞`.replace(/\s+/g, " "))}`}
-              target="_blank"
-              rel="noreferrer"
-              className="press flex items-center gap-1 text-[13px] font-semibold text-blue"
-            >
-              가사 찾아보기 <Icon name="arrowUpRight" className="size-3.5" />
-            </a>
-          ) : undefined
-        }
-      >
-        <textarea
-          id="lyrics"
-          value={lyrics}
-          onChange={(e) => setLyrics(e.target.value)}
-          onPaste={onPaste}
-          placeholder={"가사를 그대로 붙여넣어 주세요.\n\n例)\n夜明け前の空に 小さな星がひとつ\n眠れない僕は 窓を開けて君を思う"}
-          rows={12}
-          className="font-jp input min-h-[16rem] resize-y text-[16px] leading-relaxed"
-          required
-        />
-        {koreanLines > 0 && (
-          <p className="mt-2 flex items-start gap-1.5 rounded-2xl bg-blue-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
-            <Icon name="info" className="mt-0.5 size-4 shrink-0 text-blue" />
-            {lineCount > 0
-              ? `한글 발음·해석 ${koreanLines}줄은 빼고 일본어 가사 ${lineCount}줄로 만들어요.`
-              : "일본어 가사가 없어요. 한글 발음이나 해석만으로는 단어장을 만들 수 없어요."}
-          </p>
-        )}
-        <p className="mt-2 text-[13px] text-ink-3">
-          가사는 직접 찾아 붙여넣어 주세요. 내 기기(로그인하면 내 계정)에만 저장되고, 단어장을 만들 때만 AI에 보내져요.
-        </p>
-      </Field>
-
-      {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-[14px] font-medium text-danger">{error}</p>}
-
-      <div className="pb-safe sticky bottom-0 -mx-4 bg-gradient-to-t from-bg via-bg to-transparent px-4 pt-6 pb-4">
+      <div className="pb-safe sticky bottom-0 -mx-5 bg-gradient-to-t from-bg from-60% to-transparent px-5 pt-7">
         <button
           type="submit"
           disabled={!canSubmit}
-          className="btn-primary press flex w-full items-center justify-center gap-2 py-4 text-[16px] font-semibold disabled:opacity-40 disabled:shadow-none"
+          className="btn-primary press mb-[22px] flex h-14 w-full items-center justify-center gap-2 text-[16px] font-bold disabled:opacity-40"
         >
           {busy ? (
             <>
@@ -214,28 +220,21 @@ function htmlToPlainLyrics(html: string): string {
   return doc.body.textContent ?? "";
 }
 
-function Field({
-  label,
-  hint,
-  htmlFor,
-  action,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  htmlFor: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function SectionTitle({ id, children }: { id?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <label htmlFor={htmlFor} className="flex items-baseline gap-2 text-[15px] font-semibold">
-          {label}
-          {hint && <span className="text-[13px] font-normal text-ink-3">{hint}</span>}
-        </label>
-        {action}
-      </div>
+    <h2 id={id} className="mb-2.5 text-[16px] font-bold">
+      {children}
+    </h2>
+  );
+}
+
+/** 카드 안 한 줄 폼: 왼쪽 이름표 + 오른쪽 입력 */
+function FormRow({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+  return (
+    <div className="flex h-[52px] items-center gap-3 px-4">
+      <label htmlFor={htmlFor} className="w-14 shrink-0 text-[14px] font-semibold text-ink-2">
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -284,7 +283,9 @@ function SongSearch({
 
   if (picked) {
     return (
-      <div className="card flex items-center gap-3 p-3">
+      <section>
+      <SectionTitle>노래 찾기</SectionTitle>
+      <div className="card flex items-center gap-3 rounded-[22px] p-3">
         {picked.cover ? (
           // 앨범 커버는 외부 주소라 그대로 쓴다.
           // eslint-disable-next-line @next/next/no-img-element
@@ -312,15 +313,16 @@ function SongSearch({
           다시 찾기
         </button>
       </div>
+      </section>
     );
   }
 
   const q = query.trim();
   return (
-    <div>
-      <label htmlFor="song-search" className="mb-2 block text-[15px] font-semibold">
-        노래 찾기
-      </label>
+    <section>
+      <h2 className="mb-2.5 text-[16px] font-bold">
+        <label htmlFor="song-search">노래 찾기</label>
+      </h2>
       <div className="relative">
         <Icon name="search" className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-ink-3" />
         <input
@@ -332,14 +334,14 @@ function SongSearch({
             if (e.target.value.trim().length < 2) setHits(null);
           }}
           placeholder="제목이나 가수 (예: 夜に駆ける, YOASOBI)"
-          className="font-jp input rounded-full pl-11"
+          className="font-jp input h-[52px] rounded-full py-0 pl-11"
           autoComplete="off"
           enterKeyHint="search"
         />
         {loading && <Spinner className="absolute top-1/2 right-4 size-4 -translate-y-1/2 text-ink-3" />}
       </div>
       {q.length >= 2 && hits && (
-        <ul className="card mt-2 divide-y divide-line overflow-hidden" aria-label="검색 결과">
+        <ul className="card mt-2.5 divide-y divide-line overflow-hidden rounded-[22px]" aria-label="검색 결과">
           {hits.map((h) => (
             <li key={`${h.title}|${h.artist}|${h.album}`}>
               <button
@@ -349,9 +351,9 @@ function SongSearch({
               >
                 {h.cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={h.cover} alt="" loading="lazy" className="size-11 shrink-0 rounded-xl bg-muted object-cover" />
+                  <img src={h.cover} alt="" loading="lazy" className="size-11 shrink-0 rounded-[14px] bg-muted object-cover" />
                 ) : (
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-ink-3">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-muted text-ink-3">
                     <Icon name="music" className="size-5" />
                   </span>
                 )}
@@ -369,10 +371,13 @@ function SongSearch({
           )}
         </ul>
       )}
-      {failed && <p className="mt-2 text-[13px] text-danger">노래를 찾지 못했어요. 아래에 직접 적어 주세요.</p>}
-      {!hits && !failed && (
-        <p className="mt-2 text-[13px] text-ink-3">고르면 제목·가수·앨범 커버가 채워져요. 없으면 아래에 직접 적어도 돼요.</p>
+      {failed ? (
+        <p className="mx-1 mt-2 text-[13px] text-danger">노래를 찾지 못했어요. 아래에 직접 적어 주세요.</p>
+      ) : (
+        <p className="mx-1 mt-2 text-[13px] text-ink-3">
+          고르면 제목·가수·앨범 커버가 채워져요.{!hits && " 없으면 아래에 직접 적어도 돼요."}
+        </p>
       )}
-    </div>
+    </section>
   );
 }

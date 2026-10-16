@@ -26,13 +26,21 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
-export function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
+export function Icon({
+  name,
+  className = "size-5",
+  strokeWidth = 2,
+}: {
+  name: IconName;
+  className?: string;
+  strokeWidth?: number;
+}) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -45,7 +53,7 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
 
 const TONES = {
   blue: "bg-blue-soft text-blue",
-  danger: "bg-danger/10 text-danger",
+  danger: "bg-danger-soft text-danger",
   muted: "bg-muted text-ink-3",
   plain: "bg-surface text-blue",
   solid: "btn-primary",

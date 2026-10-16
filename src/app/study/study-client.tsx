@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon } from "@/components/Icon";
 import { Headline } from "@/components/PageHeader";
+import { QueueSplit } from "@/components/QueueSplit";
 import { SongCover } from "@/components/SongCover";
 import {
   buildQueue,
@@ -55,33 +56,24 @@ function Study() {
   const extra = Math.max(0, newToday - dailyNew) + EXTRA_NEW;
 
   return (
-    <div className="space-y-7 pt-5">
+    <div className="space-y-8 pt-5">
       <Headline className="text-[30px]" first="어떤 단어로" second="학습할까요?" />
 
-      <section className="iris-card p-5" aria-live="polite">
-        <p className="font-jp truncate text-[13px] font-medium text-ink-3">
+      <section className="card p-5" aria-live="polite">
+        <p className={`truncate text-[13px] font-semibold text-ink-2 ${songId ? "font-jp" : ""}`}>
           {songId ? songs[songId].title : "모은 단어 전체"}
         </p>
         <div className="mt-2 flex items-end justify-between gap-3">
           <p className="flex items-baseline gap-1">
-            <span className="num text-[48px] leading-none font-medium">{total}</span>
-            <span className="text-[16px] font-semibold text-ink-2">개</span>
+            <span className="num text-[52px] leading-none font-medium tracking-[-0.04em]">{total}</span>
+            <span className="text-[17px] font-bold text-ink-2">개</span>
           </p>
-          <dl className="space-y-1 text-right text-[13px]">
-            <div className="flex justify-end gap-2">
-              <dt className="text-ink-3">다시 볼 단어</dt>
-              <dd className="num w-6 font-semibold">{current.dueCount}</dd>
-            </div>
-            <div className="flex justify-end gap-2">
-              <dt className="text-ink-3">새 단어</dt>
-              <dd className="num w-6 font-semibold">{current.newCount}</dd>
-            </div>
-          </dl>
+          <QueueSplit due={current.dueCount} fresh={current.newCount} />
         </div>
         {total > 0 ? (
           <Link
             href={reviewHref(songId)}
-            className="btn-primary press mt-5 flex items-center justify-center py-3.5 text-[15px] font-semibold"
+            className="btn-primary press mt-5 flex h-[54px] items-center justify-center text-[16px] font-bold"
           >
             학습 시작
           </Link>
@@ -90,7 +82,7 @@ function Study() {
             <p className="mt-3 text-[14px] text-ink-2">오늘 배울 새 단어를 다 배웠어요.</p>
             <Link
               href={reviewHref(songId, extra)}
-              className="btn-primary press mt-4 flex items-center justify-center py-3.5 text-[15px] font-semibold"
+              className="btn-primary press mt-4 flex h-[54px] items-center justify-center text-[16px] font-bold"
             >
               새 단어 {Math.min(EXTRA_NEW, current.freshTotal)}개 더 학습하기
             </Link>
@@ -103,14 +95,14 @@ function Study() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-[19px] font-bold">범위</h2>
-        <ul className="space-y-2" role="radiogroup" aria-label="학습 범위">
+        <h2 className="mb-3 text-[20px] font-bold">범위</h2>
+        <ul className="card divide-y divide-line overflow-hidden" role="radiogroup" aria-label="학습 범위">
           <ScopeRow
             selected={!songId}
             onSelect={() => setScope("all")}
             icon={
-              <span className="grid size-[52px] shrink-0 place-items-center rounded-[18px] bg-blue-soft text-blue">
-                <Icon name="cards" className="size-6" />
+              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-surface text-blue ring-1 ring-line">
+                <Icon name="cards" className="size-[22px]" />
               </span>
             }
             title="모은 단어 전체"
@@ -122,7 +114,7 @@ function Study() {
               key={id}
               selected={songId === id}
               onSelect={() => setScope(id)}
-              icon={<SongCover song={songs[id]} className="size-[52px] rounded-[18px] text-[22px]" />}
+              icon={<SongCover song={songs[id]} className="size-12 rounded-2xl" />}
               title={songs[id].title}
               sub={songs[id].artist || "아티스트 미상"}
               count={plan.bySong[id].queue.length}
@@ -133,44 +125,19 @@ function Study() {
       </section>
 
       <section>
-        <h2 className="text-[19px] font-bold">하루 학습량</h2>
-        <p className="mt-1 mb-3 text-[14px] text-ink-3">하루에 새로 배울 단어 수예요. 다시 볼 단어는 이와 상관없이 모두 나와요.</p>
+        <h2 className="text-[20px] font-bold">하루 새 단어</h2>
+        <p className="mt-1 mb-3 text-[14px] leading-[1.55] text-ink-3">다시 볼 단어는 이와 상관없이 모두 나와요.</p>
         <DailyAmount value={dailyNew} onChange={(n) => setSettings({ dailyNew: n })} />
-        <p className="mt-3 text-[13px] text-ink-3">
-          오늘 새로 배운 단어 <span className="num font-semibold text-ink-2">{newToday}</span>개 · 남은 몫{" "}
-          <span className="num font-semibold text-ink-2">{newLimit}</span>개
+        <p className="mx-1 mt-2.5 text-[13px] text-ink-3">
+          오늘 <b className="num font-semibold text-ink-2">{newToday}</b>개 배웠어요 ·{" "}
+          <b className="num font-semibold text-ink-2">{newLimit}</b>개 남았어요
         </p>
       </section>
 
       <section>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={autoSpeak}
-          onClick={() => setSettings({ autoSpeak: !autoSpeak })}
-          className="press flex w-full items-center gap-3 text-left"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-[19px] font-bold">뜻 볼 때 발음 듣기</span>
-            <span className="mt-1 block text-[14px] text-ink-3">뜻을 보거나 답을 고르면 단어를 읽어 줘요.</span>
-          </span>
-          <span
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${autoSpeak ? "bg-blue" : "bg-ink-3/45"}`}
-            aria-hidden
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-sm transition-transform ${
-                autoSpeak ? "translate-x-5" : ""
-              }`}
-            />
-          </span>
-        </button>
-      </section>
-
-      <section>
-        <h2 className="text-[19px] font-bold">문제 유형</h2>
-        <p className="mt-1 mb-3 text-[14px] text-ink-3">고른 유형이 섞여서 나와요. 처음 보는 단어는 뜻 떠올리기로 나와요.</p>
-        <ul className="space-y-2">
+        <h2 className="text-[20px] font-bold">문제 유형</h2>
+        <p className="mt-1 mb-3 text-[14px] leading-[1.55] text-ink-3">고른 유형이 섞여서 나와요. 처음 보는 단어는 뜻 떠올리기로.</p>
+        <ul className="divide-y divide-line overflow-hidden rounded-3xl border border-line bg-surface">
           {QUIZ_TYPES.map(({ type, label, hint }) => {
             const on = quizTypes.includes(type);
             const last = on && quizTypes.length === 1;
@@ -185,20 +152,19 @@ function Study() {
                     if (last) return;
                     setSettings({ quizTypes: on ? quizTypes.filter((t) => t !== type) : [...quizTypes, type] });
                   }}
-                  className={`press flex w-full items-center gap-3 rounded-[20px] border bg-surface px-4 py-3 text-left ${
-                    on ? "border-blue" : "border-line"
-                  }`}
+                  className="flex w-full items-center gap-3 px-4 py-[13px] text-left transition-colors active:bg-muted"
                 >
-                  <span
-                    className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${
-                      on ? "border-blue bg-blue text-white" : "border-line"
-                    }`}
-                  >
-                    {on && <Icon name="check" className="size-3.5" />}
-                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-semibold">{label}</span>
                     <span className="block text-[13px] text-ink-3">{hint}</span>
+                  </span>
+                  <span
+                    className={`grid size-6 shrink-0 place-items-center rounded-lg ${
+                      on ? "bg-btn text-white" : "border-2 border-line"
+                    }`}
+                    aria-hidden
+                  >
+                    {on && <Icon name="check" className="size-3.5" strokeWidth={2.5} />}
                   </span>
                 </button>
               </li>
@@ -206,6 +172,29 @@ function Study() {
           })}
         </ul>
       </section>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={autoSpeak}
+        onClick={() => setSettings({ autoSpeak: !autoSpeak })}
+        className="press flex w-full items-center gap-3 rounded-3xl border border-line bg-surface px-4 py-3.5 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold">뜻 볼 때 발음 듣기</span>
+          <span className="block text-[13px] text-ink-3">뜻을 보거나 답을 고르면 읽어 줘요</span>
+        </span>
+        <span
+          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${autoSpeak ? "bg-blue" : "bg-ink-3/45"}`}
+          aria-hidden
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-sm transition-transform ${
+              autoSpeak ? "translate-x-5" : ""
+            }`}
+          />
+        </span>
+      </button>
     </div>
   );
 }
@@ -234,8 +223,8 @@ function ScopeRow({
         role="radio"
         aria-checked={selected}
         onClick={onSelect}
-        className={`press flex w-full items-center gap-3.5 rounded-[22px] border bg-surface p-3 text-left shadow-[var(--shadow)] ${
-          selected ? "border-blue ring-2 ring-blue-soft" : "border-line"
+        className={`flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors ${
+          selected ? "bg-blue-soft" : "active:bg-muted"
         }`}
       >
         {icon}
@@ -243,8 +232,16 @@ function ScopeRow({
           <div className={`truncate text-[16px] font-bold ${jp ? "font-jp" : ""}`}>{title}</div>
           <div className="truncate text-[13px] text-ink-3">{sub}</div>
         </div>
-        <span className={`shrink-0 text-[13px] font-semibold ${count ? "text-blue" : "text-ink-3"}`}>
-          오늘 <span className="num">{count}</span>개
+        <span className={`shrink-0 text-[13px] font-semibold ${selected && count ? "text-blue" : "text-ink-3"}`}>
+          오늘 <span className="num">{count}</span>
+        </span>
+        <span
+          className={`grid size-[22px] shrink-0 place-items-center rounded-full ${
+            selected ? "bg-btn text-white" : "border-2 border-line"
+          }`}
+          aria-hidden
+        >
+          {selected && <Icon name="check" className="size-3" strokeWidth={3} />}
         </span>
       </button>
     </li>
@@ -266,27 +263,30 @@ function DailyAmount({ value, onChange }: { value: number; onChange: (n: number)
 
   return (
     <>
-      <div className="grid grid-cols-5 gap-2">
+      <div className="seg grid-cols-5" role="radiogroup" aria-label="하루 새 단어 수">
         {DAILY_NEW_OPTIONS.map((n) => (
           <button
             key={n}
             type="button"
-            aria-pressed={!custom && value === n}
+            role="radio"
+            aria-checked={!custom && value === n}
+            aria-label={`${n}개`}
             onClick={() => {
               setCustom(false);
               setDraft(String(n));
               onChange(n);
             }}
-            className="chip press justify-center gap-0 px-0"
+            className="seg-item press num min-h-[38px] text-[15px] aria-checked:text-blue"
           >
-            <span className="num">{n}</span>개
+            {n}
           </button>
         ))}
         <button
           type="button"
-          aria-pressed={custom}
+          role="radio"
+          aria-checked={custom}
           onClick={() => setCustom(true)}
-          className="chip press justify-center px-0"
+          className="seg-item press min-h-[38px] aria-checked:text-blue"
         >
           직접
         </button>

@@ -39,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full">
         <Providers>
-          <main className="pt-safe mx-auto min-h-dvh max-w-xl px-4 pb-32">{children}</main>
+          <main className="pt-safe mx-auto min-h-dvh max-w-xl px-5 pb-32">{children}</main>
           <Suspense>
             <BottomNav />
           </Suspense>
