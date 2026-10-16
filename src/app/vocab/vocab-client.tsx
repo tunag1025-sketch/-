@@ -5,6 +5,7 @@ import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
 import { Headline } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
+import { Stat } from "@/components/Stat";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
 import { kataToHira } from "@/lib/furigana";
@@ -97,7 +98,7 @@ function VocabList() {
               key={v.id}
               item={v}
               suspended={cards[v.id]?.suspended}
-              sub={songFilter === "all" ? songs[v.songId]?.title : undefined}
+              sub={songFilter === "all" && songsWithVocab.length > 1 ? songs[v.songId]?.title : undefined}
               onClick={() => setOpenId(v.id)}
             />
           ))}
@@ -111,11 +112,3 @@ function VocabList() {
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="text-center">
-      <p className="num text-[28px] leading-none font-medium">{value}</p>
-      <p className="grad-text mt-1.5 text-[13px] font-semibold">{label}</p>
-    </div>
-  );
-}

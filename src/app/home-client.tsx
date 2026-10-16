@@ -7,6 +7,7 @@ import { Icon, IconCircle } from "@/components/Icon";
 import { Headline } from "@/components/PageHeader";
 import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
+import { Stat } from "@/components/Stat";
 import { useInFlight } from "@/lib/api-client";
 import { buildQueue } from "@/lib/review";
 import { isLearned } from "@/lib/srs";
@@ -46,6 +47,7 @@ function Home() {
   const learned = allVocab.filter((v) => isLearned(cards[v.id])).length;
   const week = lastDays(reviewLog, now, 7);
   const days = streak(reviewLog, now);
+  const weekTotal = week.reduce((n, d) => n + d.count, 0);
 
   const progress = (song: Song) => {
     const total = song.vocab.length;
@@ -115,8 +117,8 @@ function Home() {
       </section>
 
       {ai === false && (
-        <p className="iris flex items-center gap-3 rounded-3xl px-4 py-3 text-[14px] leading-relaxed text-ink-2">
-          <IconCircle name="info" className="size-10" />
+        <p className="flex items-center gap-3 rounded-3xl bg-muted px-4 py-3 text-[14px] leading-relaxed text-ink-2">
+          <IconCircle name="info" tone="plain" className="size-10" />
           서버에 AI 키가 없어서 지금은 후리가나 가사와 데모곡만 쓸 수 있어요.
         </p>
       )}
@@ -130,9 +132,9 @@ function Home() {
         </div>
         <div className="card px-5 pt-5 pb-4">
           <div className="grid grid-cols-3">
-            <Record value={days} label="일 연속" />
-            <Record value={learned} label="외운 단어" />
-            <Record value={allVocab.length} label="모은 단어" />
+            <Stat className="text-[32px]" value={weekTotal} label="이번 주 복습" />
+            <Stat className="text-[32px]" value={learned} label="외운 단어" />
+            <Stat className="text-[32px]" value={allVocab.length} label="모은 단어" />
           </div>
           <ol className="mt-5 flex justify-between border-t border-line pt-4" aria-label="최근 7일 복습 기록">
             {week.map((d, i) => {
@@ -210,14 +212,6 @@ function Home() {
   );
 }
 
-function Record({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="text-center">
-      <p className="num text-[32px] leading-none font-medium">{value}</p>
-      <p className="grad-text mt-1.5 text-[13px] font-semibold">{label}</p>
-    </div>
-  );
-}
 
 function SongRow({ song, cards }: { song: Song; cards: Record<string, CardState> }) {
   const inFlight = useInFlight((s) => s.ids.has(song.id));

@@ -7,6 +7,7 @@ import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
 import { CircleLink, Headline } from "@/components/PageHeader";
+import { Stat } from "@/components/Stat";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { buildQueue } from "@/lib/review";
 import { intervalLabel, newCard } from "@/lib/srs";
@@ -127,7 +128,7 @@ function ReviewSession({ songId }: { songId?: string }) {
           {revealed ? (
             <div className="rounded-[28px] border border-line bg-surface px-4 pt-4 pb-3 shadow-[0_-8px_30px_rgb(31_59_120/0.10)]">
               <p className="text-center text-[15px] font-semibold">
-                이 단어, <span className="grad-text">어땠어요?</span>
+                이 단어, 어땠어요?
               </p>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {GRADES.map((g) => (
@@ -139,7 +140,7 @@ function ReviewSession({ songId }: { songId?: string }) {
                     style={{ color: g.tone, background: `color-mix(in srgb, ${g.tone} 10%, var(--surface))` }}
                   >
                     <span className="text-[15px] font-semibold">{g.label}</span>
-                    <span className="num text-[12px] font-medium opacity-70">{intervalLabel(card, g.grade, now)}</span>
+                    <span className="num text-[12px] font-medium">{intervalLabel(card, g.grade, now)}</span>
                   </button>
                 ))}
               </div>
@@ -193,23 +194,23 @@ function Finished({
       </p>
       {!empty && (
         <div className="card mt-7 grid w-full grid-cols-2 py-5">
-          <div>
-            <p className="num text-[34px] leading-none font-medium">{total}</p>
-            <p className="grad-text mt-1.5 text-[13px] font-semibold">복습한 단어</p>
-          </div>
-          <div>
-            <p className="num text-[34px] leading-none font-medium">{days}</p>
-            <p className="grad-text mt-1.5 text-[13px] font-semibold">일 연속</p>
-          </div>
+          <Stat className="text-[34px]" value={total} label="복습한 단어" />
+          <Stat className="text-[34px]" value={days} label="일 연속" />
         </div>
       )}
       <div className="mt-7 grid w-full grid-cols-2 gap-2.5">
         <Link href="/vocab" className="btn-ghost press py-3.5 text-[15px] font-semibold">
           단어장 보기
         </Link>
-        <Link href={exitHref} className="btn-primary press py-3.5 text-[15px] font-semibold">
-          {exitHref === "/" ? "홈으로" : "노래로"}
-        </Link>
+        {empty ? (
+          <Link href="/songs/new" className="btn-primary press py-3.5 text-[15px] font-semibold">
+            노래 추가하기
+          </Link>
+        ) : (
+          <Link href={exitHref} className="btn-primary press py-3.5 text-[15px] font-semibold">
+            {exitHref === "/" ? "홈으로" : "노래로"}
+          </Link>
+        )}
       </div>
     </div>
   );

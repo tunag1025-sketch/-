@@ -41,6 +41,7 @@ const TONES = {
   blue: "bg-blue-soft text-blue",
   danger: "bg-danger/10 text-danger",
   muted: "bg-muted text-ink-3",
+  plain: "bg-surface text-blue",
   solid: "btn-primary",
 } as const;
 

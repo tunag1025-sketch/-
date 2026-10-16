@@ -11,6 +11,7 @@ import { CircleButton, Headline, TopBar } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
+import { Stat } from "@/components/Stat";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
 import { startAnalysis, useInFlight } from "@/lib/api-client";
@@ -97,32 +98,45 @@ function SongView({ song }: { song: Song }) {
       <AnalysisStatus song={song} />
 
       <div className="sticky top-0 z-20 -mx-4 mt-6 mb-3 bg-bg/85 px-4 py-2 backdrop-blur-md">
-        <div className="flex items-center gap-2" role="tablist">
-          {(
-            [
-              ["lyrics", "가사", null],
-              ["vocab", "단어", total],
-              ["grammar", "문법", song.grammar.length],
-            ] as const
-          ).map(([key, label, count]) => (
-            <button
-              key={key}
-              role="tab"
-              aria-selected={tab === key}
-              onClick={() => setTab(key)}
-              className="chip press"
-            >
-              {label}
-              {count ? <span className="num text-[13px] opacity-70">{count}</span> : null}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
+          <div className="flex gap-1.5" role="tablist">
+            {(
+              [
+                ["lyrics", "가사", null],
+                ["vocab", "단어", total],
+                ["grammar", "문법", song.grammar.length],
+              ] as const
+            ).map(([key, label, count]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className="chip press shrink-0 px-3.5 whitespace-nowrap"
+              >
+                {label}
+                {count ? <span className="num text-[13px] opacity-75">{count}</span> : null}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
+            role="switch"
+            aria-checked={furigana}
             onClick={() => setSettings({ furigana: !furigana })}
-            aria-pressed={furigana}
-            className="chip press font-jp ml-auto"
+            className="press ml-auto flex shrink-0 items-center gap-2 py-2 pl-1 text-[13px] font-medium text-ink-2"
           >
-            ふりがな
+            <span className="font-jp whitespace-nowrap">ふりがな</span>
+            <span
+              className={`relative h-6 w-10 rounded-full transition-colors ${furigana ? "bg-blue" : "bg-ink-3/45"}`}
+              aria-hidden
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${
+                  furigana ? "translate-x-4" : ""
+                }`}
+              />
+            </span>
           </button>
         </div>
       </div>
@@ -138,7 +152,7 @@ function SongView({ song }: { song: Song }) {
             line.text.trim() ? (
               <div key={i}>
                 <div className="flex items-start gap-2">
-                  <p className="flex-1 text-[19px] leading-[2.3]">
+                  <p className="flex-1 text-[19px] leading-[2.3] text-pretty">
                     <LyricLineView line={line} index={i} vocab={song.vocab} onWord={setOpenWord} furigana={furigana} />
                   </p>
                   <button
@@ -180,7 +194,7 @@ function SongView({ song }: { song: Song }) {
           )}
           {song.grammar.map((g, i) => (
             <li key={i} className="card px-5 py-4">
-              <p className="font-jp grad-text inline-block text-[21px] font-bold">{g.pattern}</p>
+              <p className="font-jp text-[21px] font-bold text-blue">{g.pattern}</p>
               <p className="mt-0.5 text-[15px] font-semibold">{g.meaning}</p>
               <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{g.explanation}</p>
               {song.lines[g.line] && (
@@ -240,14 +254,6 @@ function SongView({ song }: { song: Song }) {
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="text-center">
-      <p className="num text-[28px] leading-none font-medium">{value}</p>
-      <p className="grad-text mt-1.5 text-[13px] font-semibold">{label}</p>
-    </div>
-  );
-}
 
 function AnalysisStatus({ song }: { song: Song }) {
   const inFlight = useInFlight((s) => s.ids.has(song.id));
