@@ -71,12 +71,21 @@ function Home() {
       <header>
         <div className="flex items-center justify-between">
           <p className="text-[15px] font-medium text-ink-3">{greeting(now)}!</p>
-          <span className="flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold">
-            <Icon name="flame" className="size-4 text-pink" />
-            <span>
-              <span className="num">{days}</span>일 연속
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold">
+              <Icon name="flame" className="size-4 text-pink" />
+              <span>
+                <span className="num">{days}</span>일 연속
+              </span>
             </span>
-          </span>
+            <Link
+              href="/settings"
+              aria-label="설정"
+              className="press grid size-9 place-items-center rounded-full border border-line bg-surface text-ink-2"
+            >
+              <Icon name="user" className="size-[18px]" />
+            </Link>
+          </div>
         </div>
         <Headline className="mt-2 text-[31px]" first="좋아하는 노래로" second="일본어 공부해요" />
       </header>

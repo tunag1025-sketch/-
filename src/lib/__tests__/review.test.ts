@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQueue, remainingNew } from "../review";
+import { buildQueue, clampDailyNew, remainingNew } from "../review";
 import { newCard } from "../srs";
 import { dayKey } from "../stats";
 import type { CardState, Song, VocabItem } from "../types";
@@ -44,5 +44,16 @@ describe("remainingNew", () => {
     expect(remainingNew(20, { [dayKey(now)]: 15 }, now)).toBe(5);
     expect(remainingNew(10, { [dayKey(now)]: 15 }, now)).toBe(0);
     expect(remainingNew(10, {}, now)).toBe(10);
+  });
+});
+
+describe("clampDailyNew", () => {
+  it("keeps typed amounts inside 1–300", () => {
+    expect(clampDailyNew("15")).toBe(15);
+    expect(clampDailyNew("0")).toBe(1);
+    expect(clampDailyNew("999")).toBe(300);
+    expect(clampDailyNew("12.6")).toBe(13);
+    expect(clampDailyNew("")).toBeNull();
+    expect(clampDailyNew("abc")).toBeNull();
   });
 });

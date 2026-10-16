@@ -7,12 +7,24 @@ import { Badge } from "./Badge";
 import { Icon } from "./Icon";
 import { LyricLineView } from "./LyricLineView";
 import { Ruby } from "./Ruby";
+import { SpeakButton } from "./SpeakButton";
 
-export function WordHeading({ item, size = "lg" }: { item: VocabItem; size?: "lg" | "md" }) {
+export function WordHeading({
+  item,
+  size = "lg",
+  center = false,
+}: {
+  item: VocabItem;
+  size?: "lg" | "md";
+  center?: boolean;
+}) {
   return (
-    <div className="font-jp">
+    <div className={`font-jp ${center ? "text-center" : ""}`}>
       <div className="text-[15px] font-medium text-ink-3">{item.reading}</div>
-      <div className={`leading-tight font-bold ${size === "lg" ? "text-[40px]" : "text-[28px]"}`}>{item.word}</div>
+      <div className={`flex items-center gap-3 ${center ? "justify-center" : ""}`}>
+        <span className={`leading-tight font-bold ${size === "lg" ? "text-[40px]" : "text-[28px]"}`}>{item.word}</span>
+        <SpeakButton text={item.reading || item.word} label={`${item.word} 발음 듣기`} />
+      </div>
     </div>
   );
 }
@@ -69,11 +81,14 @@ export function VocabDetail({
           <SectionLabel>예문</SectionLabel>
           <ul className="divide-y divide-line rounded-2xl border border-line">
             {item.examples.map((ex, i) => (
-              <li key={i} className="px-4 py-3">
-                <p className="font-jp text-[17px] leading-[2.1]">
-                  <Ruby segs={ex.segs} hideReading={!furigana} />
-                </p>
-                <p className="text-[14px] text-ink-2">{ex.ko}</p>
+              <li key={i} className="flex items-start gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-jp text-[17px] leading-[2.1]">
+                    <Ruby segs={ex.segs} hideReading={!furigana} />
+                  </p>
+                  <p className="text-[14px] text-ink-2">{ex.ko}</p>
+                </div>
+                <SpeakButton text={ex.ja} label="예문 듣기" className="mt-2 size-8" />
               </li>
             ))}
           </ul>

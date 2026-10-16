@@ -6,7 +6,16 @@ import { HydrationGate } from "@/components/HydrationGate";
 import { Icon } from "@/components/Icon";
 import { Headline } from "@/components/PageHeader";
 import { SongCover } from "@/components/SongCover";
-import { buildQueue, DAILY_NEW_OPTIONS, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
+import {
+  buildQueue,
+  clampDailyNew,
+  DAILY_NEW_MAX,
+  DAILY_NEW_MIN,
+  DAILY_NEW_OPTIONS,
+  EXTRA_NEW,
+  remainingNew,
+  reviewHref,
+} from "@/lib/review";
 import { dayKey } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 
@@ -123,19 +132,7 @@ function Study() {
       <section>
         <h2 className="text-[19px] font-semibold">하루 학습량</h2>
         <p className="mt-1 mb-3 text-[14px] text-ink-3">하루에 새로 배울 단어 수예요. 다시 볼 단어는 이와 상관없이 모두 나와요.</p>
-        <div className="grid grid-cols-5 gap-2">
-          {DAILY_NEW_OPTIONS.map((n) => (
-            <button
-              key={n}
-              type="button"
-              aria-pressed={dailyNew === n}
-              onClick={() => setSettings({ dailyNew: n })}
-              className="chip press justify-center gap-0 px-0"
-            >
-              <span className="num">{n}</span>개
-            </button>
-          ))}
-        </div>
+        <DailyAmount value={dailyNew} onChange={(n) => setSettings({ dailyNew: n })} />
         <p className="mt-3 text-[13px] text-ink-3">
           오늘 새로 배운 단어 <span className="num font-semibold text-ink-2">{newToday}</span>개 · 남은 몫{" "}
           <span className="num font-semibold text-ink-2">{newLimit}</span>개
@@ -183,5 +180,77 @@ function ScopeRow({
         </span>
       </button>
     </li>
+  );
+}
+
+/** 10 · 20 · 30 · 50 중에 고르거나 직접 넣는다. */
+function DailyAmount({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const isPreset = (DAILY_NEW_OPTIONS as readonly number[]).includes(value);
+  const [custom, setCustom] = useState(!isPreset);
+  const [draft, setDraft] = useState(String(value));
+
+  const commit = () => {
+    const n = clampDailyNew(draft);
+    if (n === null) return setDraft(String(value));
+    setDraft(String(n));
+    onChange(n);
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-5 gap-2">
+        {DAILY_NEW_OPTIONS.map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-pressed={!custom && value === n}
+            onClick={() => {
+              setCustom(false);
+              setDraft(String(n));
+              onChange(n);
+            }}
+            className="chip press justify-center gap-0 px-0"
+          >
+            <span className="num">{n}</span>개
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-pressed={custom}
+          onClick={() => setCustom(true)}
+          className="chip press justify-center px-0"
+        >
+          직접
+        </button>
+      </div>
+      {custom && (
+        <form
+          className="mt-3 flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            commit();
+          }}
+        >
+          <label htmlFor="daily-new" className="text-[15px] font-medium text-ink-2">
+            하루
+          </label>
+          <input
+            id="daily-new"
+            type="number"
+            inputMode="numeric"
+            min={DAILY_NEW_MIN}
+            max={DAILY_NEW_MAX}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            className="num input w-24 py-2.5 text-center"
+          />
+          <span className="text-[15px] font-medium text-ink-2">개</span>
+          <button type="submit" className="btn-ghost press ml-auto px-5 py-2.5 text-[14px] font-semibold">
+            저장
+          </button>
+        </form>
+      )}
+    </>
   );
 }

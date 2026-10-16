@@ -2,7 +2,17 @@ import { isDue } from "./srs";
 import { dayKey } from "./stats";
 import type { CardState, Song, VocabItem } from "./types";
 
-export const DAILY_NEW_OPTIONS = [5, 10, 20, 30, 50] as const;
+export const DAILY_NEW_OPTIONS = [10, 20, 30, 50] as const;
+/** 직접 정할 때의 범위 */
+export const DAILY_NEW_MIN = 1;
+export const DAILY_NEW_MAX = 300;
+
+/** 직접 넣은 하루 학습량을 범위 안의 정수로 맞춘다. 숫자가 아니면 null. */
+export function clampDailyNew(input: string): number | null {
+  const n = Math.round(Number(input));
+  if (!input.trim() || !Number.isFinite(n)) return null;
+  return Math.min(DAILY_NEW_MAX, Math.max(DAILY_NEW_MIN, n));
+}
 /** '더 학습하기'로 한 번에 더하는 새 단어 수 */
 export const EXTRA_NEW = 10;
 

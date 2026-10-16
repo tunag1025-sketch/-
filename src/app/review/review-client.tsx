@@ -8,6 +8,7 @@ import { Icon, IconCircle } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
 import { CircleLink, Headline } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
+import { SpeakButton } from "@/components/SpeakButton";
 import { Stat } from "@/components/Stat";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
@@ -201,7 +202,10 @@ function ReviewCard({
             {revealed && (
               <div className="mb-1.5 border-t border-surface pt-2 text-[15px] leading-relaxed">
                 {meaning.explanation ? (
-                  <p className="font-medium text-ink-2">{meaning.explanation.translation}</p>
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 flex-1 font-medium text-ink-2">{meaning.explanation.translation}</p>
+                    <SpeakButton text={song.lines[contextLine].text} label="가사 줄 듣기" className="size-8" plain />
+                  </div>
                 ) : meaning.error ? (
                   <p className="text-ink-3">
                     해석을 불러오지 못했어요.{" "}
@@ -220,7 +224,7 @@ function ReviewCard({
         )}
         <div className="mt-8 text-center">
           {revealed ? (
-            <WordHeading item={item} />
+            <WordHeading item={item} center />
           ) : (
             <>
               <div className="font-jp text-[44px] leading-tight font-bold">{item.word}</div>

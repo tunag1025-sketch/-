@@ -65,8 +65,10 @@ export type Song = {
   vocab: VocabItem[];
   grammar: GrammarPoint[];
   isDemo?: boolean;
-  /** 직접 고른 커버 사진 (JPEG data URL) */
+  /** 커버 사진: 직접 고른 사진(JPEG data URL)이나 앨범 커버 주소 */
   cover?: string;
+  /** 마지막으로 바뀐 시각 (기기 사이에서 합칠 때 쓴다) */
+  updatedAt?: number;
 };
 
 /** 단어 카드 하나의 간격 반복 상태 */
@@ -83,6 +85,8 @@ export type CardState = {
   /** 외운 단어로 옮긴 카드. 학습 목록에서 빠진다. */
   learned?: boolean;
   learnedAt?: number;
+  /** 마지막으로 바뀐 시각 */
+  updatedAt?: number;
 };
 
 /** 다시 · 이해 · 완벽 */

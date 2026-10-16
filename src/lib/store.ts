@@ -4,28 +4,10 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { LEARNED_INTERVAL_DAYS, newCard, schedule } from "./srs";
 import { dayKey } from "./stats";
-import type { CardState, Grade, Level, LineExplanation, Song } from "./types";
+import { DEFAULT_SETTINGS, mergeData, type Settings, type UserData } from "./data";
+import type { CardState, Grade, LineExplanation, Song } from "./types";
 
-type Settings = {
-  furigana: boolean;
-  defaultLevel: Level;
-  /** 하루에 새로 배울 단어 수 */
-  dailyNew: number;
-};
-
-const DEFAULT_SETTINGS: Settings = { furigana: true, defaultLevel: "N4", dailyNew: 20 };
-
-type State = {
-  songs: Record<string, Song>;
-  /** 최근에 추가한 노래가 앞 */
-  order: string[];
-  cards: Record<string, CardState>;
-  explanations: Record<string, LineExplanation>;
-  /** 날짜(YYYY-MM-DD)별로 답한 카드 수 */
-  reviewLog: Record<string, number>;
-  /** 날짜별로 처음 학습한 새 단어 수 */
-  newLog: Record<string, number>;
-  settings: Settings;
+type State = UserData & {
   seededDemo: boolean;
 
   addSong: (song: Song) => void;
@@ -39,7 +21,15 @@ type State = {
   setExplanation: (key: string, explanation: LineExplanation) => void;
   setSettings: (patch: Partial<Settings>) => void;
   markDemoSeeded: () => void;
+  /** 백업 파일 등에서 읽은 데이터를 지금 데이터와 합친다. */
+  importData: (incoming: Partial<UserData>) => void;
 };
+
+/** 상태에서 학습 데이터 부분만 */
+export function pickData(s: UserData): UserData {
+  const { songs, order, cards, explanations, reviewLog, newLog, settings, deleted } = s;
+  return { songs, order, cards, explanations, reviewLog, newLog, settings, deleted };
+}
 
 export const explanationKey = (songId: string, line: number) => `${songId}:${line}`;
 
@@ -53,23 +43,27 @@ export const useStore = create<State>()(
       reviewLog: {},
       newLog: {},
       settings: DEFAULT_SETTINGS,
+      deleted: {},
       seededDemo: false,
 
       addSong: (song) =>
         set((s) => ({
-          songs: { ...s.songs, [song.id]: song },
+          songs: { ...s.songs, [song.id]: { ...song, updatedAt: Date.now() } },
           order: [song.id, ...s.order.filter((id) => id !== song.id)],
         })),
 
       createSong: (data) => {
         const id = crypto.randomUUID().slice(0, 8);
-        const song: Song = { ...data, id, createdAt: Date.now(), status: "analyzing", vocab: [], grammar: [] };
+        const now = Date.now();
+        const song: Song = { ...data, id, createdAt: now, updatedAt: now, status: "analyzing", vocab: [], grammar: [] };
         set((s) => ({ songs: { ...s.songs, [id]: song }, order: [id, ...s.order] }));
         return id;
       },
 
       updateSong: (id, patch) =>
-        set((s) => (s.songs[id] ? { songs: { ...s.songs, [id]: { ...s.songs[id], ...patch } } } : s)),
+        set((s) =>
+          s.songs[id] ? { songs: { ...s.songs, [id]: { ...s.songs[id], ...patch, updatedAt: Date.now() } } } : s,
+        ),
 
       removeSong: (id) =>
         set((s) => {
@@ -83,6 +77,7 @@ export const useStore = create<State>()(
             order: s.order.filter((x) => x !== id),
             cards: keep(s.cards),
             explanations: keep(s.explanations),
+            deleted: { ...s.deleted, [id]: Date.now() },
           };
         }),
 
@@ -92,7 +87,7 @@ export const useStore = create<State>()(
           const day = dayKey(now);
           const isNew = !s.cards[vocabId];
           return {
-            cards: { ...s.cards, [vocabId]: schedule(s.cards[vocabId] ?? newCard(now), grade, now) },
+            cards: { ...s.cards, [vocabId]: { ...schedule(s.cards[vocabId] ?? newCard(now), grade, now), updatedAt: now } },
             reviewLog: { ...s.reviewLog, [day]: (s.reviewLog[day] ?? 0) + 1 },
             newLog: isNew ? { ...s.newLog, [day]: (s.newLog[day] ?? 0) + 1 } : s.newLog,
           };
@@ -104,8 +99,8 @@ export const useStore = create<State>()(
           const card = s.cards[vocabId] ?? newCard(now);
           // 다시 학습할 때는 연속 '완벽'을 지우고 바로 학습 목록에 올린다.
           const next: CardState = learned
-            ? { ...card, learned: true, learnedAt: now }
-            : { ...card, learned: false, learnedAt: undefined, perfect: 0, due: now };
+            ? { ...card, learned: true, learnedAt: now, updatedAt: now }
+            : { ...card, learned: false, learnedAt: undefined, perfect: 0, due: now, updatedAt: now };
           // 처음 보는 단어를 바로 외운 단어로 옮겨도 오늘 배운 새 단어로 센다.
           const day = dayKey(now);
           const isNew = !s.cards[vocabId];
@@ -121,6 +116,8 @@ export const useStore = create<State>()(
       setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
 
       markDemoSeeded: () => set({ seededDemo: true }),
+
+      importData: (incoming) => set((s) => mergeData(pickData(s), incoming, { honorDeletes: false })),
     }),
     {
       name: "utango-v1",

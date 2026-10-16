@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/Icon";
+import { SpeakButton } from "@/components/SpeakButton";
 import { Spinner } from "@/components/Spinner";
 import type { Song } from "@/lib/types";
 import { useLineExplanation } from "@/lib/use-line-explanation";
@@ -13,7 +14,10 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
     <div className="iris mt-1 mb-4 rounded-[20px] px-4 py-3.5 text-[15px]">
       {explanation ? (
         <div className="space-y-3">
-          <p className="text-[16px] font-bold">{explanation.translation}</p>
+          <div className="flex items-start gap-2">
+            <p className="min-w-0 flex-1 text-[16px] font-bold">{explanation.translation}</p>
+            <SpeakButton text={song.lines[index].text} label="이 줄 듣기" className="size-8" plain />
+          </div>
           <ul className="space-y-1">
             {explanation.breakdown.map((b, i) => (
               <li key={i} className="flex gap-3">
