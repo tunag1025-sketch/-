@@ -34,6 +34,8 @@ const GROUPS: { title: string; dark?: boolean; screens: Screen[] }[] = [
     screens: [
       { path: "/vocab", title: "단어장" },
       { path: "/vocab?word=君", title: "단어장 · 단어 카드", note: "두 노래에 나오는 단어" },
+      { path: "/vocab?view=grammar", title: "단어장 · 문법", note: "모은 문형과 기억 상태" },
+      { path: "/vocab?view=kanji", title: "단어장 · 한자", note: "모은 단어 속 한자" },
     ],
   },
   {
@@ -48,6 +50,9 @@ const GROUPS: { title: string; dark?: boolean; screens: Screen[] }[] = [
       { path: "/review?quiz=reading", title: "학습 · 읽는 법 쓰기" },
       { path: "/review?quiz=reading&reveal=1", title: "학습 · 맞혔을 때" },
       { path: "/review?done=1", title: "학습 · 다 했어요" },
+      { path: "/review?kind=grammar", title: "문법 복습", note: "문형 뜻 떠올리기 · 가사 빈칸" },
+      { path: "/review?kind=kanji", title: "한자 카드", note: "훈음 떠올리기 · 고르기" },
+      { path: "/review?kind=weak", title: "자주 틀린 단어" },
     ],
   },
   {

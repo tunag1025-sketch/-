@@ -6,12 +6,14 @@ import { HydrationGate } from "@/components/HydrationGate";
 import { Icon } from "@/components/Icon";
 import { LoginButtons } from "@/components/LoginButtons";
 import { TopBar } from "@/components/PageHeader";
+import { Spinner } from "@/components/Spinner";
 import { isWordKey } from "@/lib/cards";
 import { makeBackup, parseBackup } from "@/lib/data";
 import { dayKey } from "@/lib/stats";
 import { useAccount } from "@/lib/account";
 import { pickData, useStore } from "@/lib/store";
 import { clearLocalData, flush, type SyncStatus, syncNow, useSyncStatus } from "@/lib/sync";
+import { disablePush, enablePush, pushStatus, type PushStatus, pushSupport, sendTestPush } from "@/lib/push-client";
 
 type Invite = {
   code: string;
@@ -34,6 +36,7 @@ function Settings() {
     <div className="space-y-8">
       <TopBar backHref="/" title="설정" />
       {enabled && <AccountSection />}
+      {enabled && user && <Reminders />}
       {user?.role === "admin" && <Invites />}
       <Backup />
     </div>
@@ -144,6 +147,108 @@ function AccountSection() {
           </p>
           <LoginButtons next="/settings" />
         </div>
+      )}
+    </section>
+  );
+}
+
+/** 매일 학습 알림: 저녁 8시에 아직 공부하지 않았으면 알려 준다 (이 기기에서 켜고 끈다). */
+function Reminders() {
+  const [support] = useState(pushSupport);
+  const [status, setStatus] = useState<PushStatus | "loading">("loading");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (support !== "ok") return;
+    let alive = true;
+    pushStatus()
+      .then((s) => alive && setStatus(s))
+      .catch(() => alive && setStatus("off"));
+    return () => {
+      alive = false;
+    };
+  }, [support]);
+
+  async function toggle() {
+    if (busy || support !== "ok" || status === "loading") return;
+    setBusy(true);
+    setNote(null);
+    try {
+      if (status === "on") {
+        await disablePush();
+        setStatus("off");
+      } else {
+        const next = await enablePush();
+        setStatus(next);
+        if (next === "on") setNote({ ok: true, text: "알림을 켰어요. 시험 알림으로 확인해 보세요." });
+      }
+    } catch (err) {
+      setNote({ ok: false, text: err instanceof Error ? err.message : "알림을 바꾸지 못했어요." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function test() {
+    setNote(null);
+    const sent = await sendTestPush().catch(() => 0);
+    setNote(sent ? { ok: true, text: "시험 알림을 보냈어요." } : { ok: false, text: "알림을 보내지 못했어요. 알림을 껐다 다시 켜 보세요." });
+  }
+
+  const on = status === "on";
+  const sub =
+    support === "install"
+      ? "iPhone은 홈 화면에 추가한 Utango 앱에서 켤 수 있어요 (iOS 16.4 이상)."
+      : support === "unsupported"
+        ? "이 브라우저는 알림을 지원하지 않아요."
+        : status === "denied"
+          ? "알림이 막혀 있어요. 기기 설정에서 Utango 알림을 허용해 주세요."
+          : "저녁 8시, 아직 공부하지 않은 날에만 알려 줘요.";
+  const usable = support === "ok" && status !== "denied";
+
+  return (
+    <section>
+      <SectionLabel>알림</SectionLabel>
+      <div className="card divide-y divide-line overflow-hidden">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-disabled={!usable}
+          onClick={toggle}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-left disabled:opacity-60"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">매일 학습 알림</span>
+            <span className="block text-[13px] leading-relaxed text-ink-3">{sub}</span>
+          </span>
+          {usable &&
+            (status === "loading" || busy ? (
+              <Spinner className="size-5 text-ink-3" />
+            ) : (
+              <span
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-blue" : "bg-ink-3/45"}`}
+                aria-hidden
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-sm transition-transform ${
+                    on ? "translate-x-5" : ""
+                  }`}
+                />
+              </span>
+            ))}
+        </button>
+        {on && (
+          <button type="button" onClick={test} className="w-full px-4 py-3 text-left text-[14px] font-semibold text-blue">
+            시험 알림 보내기
+          </button>
+        )}
+      </div>
+      {note && (
+        <p role="status" className={`mx-1 mt-2 text-[13px] ${note.ok ? "text-ink-3" : "text-danger"}`}>
+          {note.text}
+        </p>
       )}
     </section>
   );

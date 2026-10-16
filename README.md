@@ -68,7 +68,16 @@ npm run dev                  # http://localhost:3000
 | `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` | 로그인 | 카카오 REST API 키와 Client Secret. 돌아올 주소: `{APP_URL}/api/auth/kakao/callback`, 동의 항목: 닉네임·프로필 사진 |
 | `ADMIN_EMAILS` | 로그인 | 관리자 Google 메일. 이 메일로 로그인하면 초대 없이 가입하고 초대 링크를 만들 수 있어요. 아무도 없을 때는 처음 로그인한 사람이 관리자가 돼요. |
 
+| `CRON_SECRET` | 알림 (권장) | 아무 긴 문자열. 정해 두면 매일 알림을 Vercel 크론만 보낼 수 있어요. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | | 웹 푸시 키. 비워 두면 처음 쓸 때 만들어 DB에 둬요. 바꾸면 이미 켠 기기는 다시 켜야 해요. |
+
 `DATABASE_URL`과 Google·카카오 중 하나 이상이 있으면 로그인이 켜져요. 로그인이 켜지면 AI 기능(단어장 만들기, 줄 해설)은 로그인한 사람만 쓸 수 있어요.
+
+### 매일 학습 알림
+
+로그인한 사람이 설정 → 알림에서 켜면, 매일 저녁 8시(한국 시간)에 그날 아직 공부하지 않았을 때만 알림이 가요.
+`vercel.json`의 `crons`가 `/api/push/cron`을 부르고, 동기화된 기록으로 다시 볼 단어 수를 세요.
+iPhone·iPad는 Safari에서 **홈 화면에 추가**한 앱(iOS 16.4 이상)에서만 켤 수 있어요.
 
 ## 구조
 
@@ -80,10 +89,13 @@ src/app/                  화면 (홈, 노래 추가, 노래 상세, 학습 설�
   api/artwork             앨범 커버 찾기 (iTunes 검색)
   api/auth, api/me        Google·카카오 로그인, 세션
   api/invites, api/sync   초대 링크, 기기 간 동기화
+  api/push                매일 학습 알림 켜기·끄기, 크론(/api/push/cron)
 src/lib/
   furigana.ts             표기와 읽기를 맞춰 한자 부분에만 루비 달기
   analysis/               AI 프롬프트, 응답 스키마(zod), 결과 정리
-  srs.ts / review.ts      간격 반복 스케줄링, 외운 단어 판정, 학습 목록
+  srs.ts / review.ts      간격 반복 스케줄링, 외운 단어 판정, 학습 목록 (자주 틀린 단어 포함)
+  cards.ts                카드 열쇠: 단어는 단어 그대로, 문법은 "문법:", 한자는 "한자:"
+  grammar.ts, kanji-deck.ts  노래 속 문형·한자를 카드로 모으기
   store.ts                기기 저장소(zustand + localStorage)
   data.ts, sync-core.ts   백업 합치기, 동기화 단위(노래·카드·해설·날짜별 기록·설정)와 합치는 규칙
   sync.ts                 로그인했을 때 바뀐 것만 올리고 받기

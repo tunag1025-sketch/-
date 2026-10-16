@@ -55,6 +55,19 @@ create table if not exists entities (
   primary key (user_id, kind, key)
 );
 create index if not exists entities_user_seq on entities (user_id, seq);
+create table if not exists app_config (
+  key text primary key,
+  value text not null
+);
+create table if not exists push_subscriptions (
+  endpoint text primary key,
+  user_id text not null references users(id) on delete cascade,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now(),
+  last_sent_day text
+);
+create index if not exists push_subscriptions_user on push_subscriptions (user_id);
 `;
 
 let ready: Promise<void> | null = null;

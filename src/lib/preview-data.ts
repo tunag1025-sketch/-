@@ -165,6 +165,10 @@ export async function previewApi(url: URL, method: string, guest: boolean): Prom
     case "/api/analyze":
       await new Promise((r) => setTimeout(r, 1200));
       return json({ message: "미리보기에서는 단어장을 만들지 않아요.", code: "PREVIEW" }, 503);
+    case "/api/push":
+      return json(method === "GET" ? { publicKey: "", subscribed: false } : { ok: true });
+    case "/api/push/test":
+      return json({ sent: 0 });
     case "/api/sync":
       return json(method === "POST" ? { ok: true } : { entities: [], cursor: 0, more: false });
     default:
