@@ -11,12 +11,14 @@ import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
 import { useAccount } from "@/lib/account";
 import { useInFlight } from "@/lib/api-client";
-import { uniqueVocab } from "@/lib/cards";
-import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
+import { buildDeck, kanjiKey, uniqueVocab } from "@/lib/cards";
+import { kanjiIn, useKanjiTable } from "@/lib/kanji";
+import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
+import { buildQueue, EXTRA_NEW, KANJI_HREF, remainingNew, reviewHref } from "@/lib/review";
 import { progressOf } from "@/lib/srs";
 import { dayKey, greeting, lastDays, streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
-import type { CardState, Song } from "@/lib/types";
+import type { CardState, Song, VocabItem } from "@/lib/types";
 import { useAiStatus } from "@/lib/use-ai-status";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -131,6 +133,8 @@ function Home() {
               : "새 노래 추가하기"}
         </Link>
       </section>
+
+      <KanjiCard vocab={allVocab} cards={cards} now={now} />
 
       {accountEnabled && !user && (
         <Link
@@ -270,6 +274,75 @@ function Home() {
         )}
       </section>
     </div>
+  );
+}
+
+/** 오늘 볼 한자 카드. 한자가 든 단어를 모았을 때만 보인다. */
+function KanjiCard({ vocab, cards, now }: { vocab: VocabItem[]; cards: Record<string, CardState>; now: number }) {
+  const songs = useStore((s) => s.songs);
+  const order = useStore((s) => s.order);
+  const info = useKanjiTable();
+  const hasKanji = useMemo(() => vocab.some((v) => kanjiIn(v.word).length > 0), [vocab]);
+  const deck = useMemo(() => {
+    if (!info) return null;
+    const keys = kanjiDeck(songs, order, info).map((k) => kanjiKey(k.char));
+    return { total: keys.length, ...buildDeck(keys, cards, now, KANJI_NEW_PER_SESSION) };
+  }, [info, songs, order, cards, now]);
+  // 표를 못 받았거나 훈음 있는 한자가 없으면 감춘다
+  if (!hasKanji || (deck && deck.total === 0)) return null;
+  const today = deck?.queue.length ?? 0;
+  // 기한이 된 한자 먼저, 그다음 새 한자
+  const glyphs = deck?.queue.slice(0, 6).map((key) => key.slice(key.indexOf(":") + 1)) ?? [];
+
+  return (
+    <section className="card p-5" aria-busy={!deck}>
+      <div className="flex items-center gap-3.5">
+        <span className="font-jp grid size-12 shrink-0 place-items-center rounded-2xl bg-blue-soft text-[22px] font-bold text-blue">
+          字
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[16px] font-bold">한자 카드</h2>
+          <p className="truncate text-[13px] text-ink-3">
+            {!deck ? (
+              "한자 표를 불러오는 중…"
+            ) : (
+              <>
+                {today > 0 ? (
+                  <>
+                    오늘 <span className="num">{today}</span>자 ·{" "}
+                  </>
+                ) : (
+                  "오늘 볼 한자를 다 봤어요 · "
+                )}
+                모은 한자 <span className="num">{deck.total}</span>자
+              </>
+            )}
+          </p>
+        </div>
+        <Link
+          href={today > 0 ? KANJI_HREF : "/vocab?view=kanji"}
+          className={`press flex h-10 shrink-0 items-center rounded-full px-4 text-[15px] font-bold ${
+            today > 0 ? "btn-primary" : "btn-ghost"
+          }`}
+        >
+          {today > 0 ? "학습" : "보기"}
+        </Link>
+      </div>
+      {glyphs.length > 0 && (
+        <ul className="mt-4 flex gap-1.5" aria-label="오늘 볼 한자">
+          {glyphs.map((c) => (
+            <li key={c} className="font-jp grid size-11 place-items-center rounded-[14px] bg-muted text-[20px] font-bold">
+              {c}
+            </li>
+          ))}
+          {today > glyphs.length && (
+            <li className="num grid h-11 place-items-center px-1.5 text-[13px] font-semibold text-ink-3">
+              +{today - glyphs.length}
+            </li>
+          )}
+        </ul>
+      )}
+    </section>
   );
 }
 

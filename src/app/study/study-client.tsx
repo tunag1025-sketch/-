@@ -14,7 +14,6 @@ import {
   DAILY_NEW_MIN,
   DAILY_NEW_OPTIONS,
   EXTRA_NEW,
-  grammarHref,
   KANJI_HREF,
   remainingNew,
   reviewHref,
@@ -24,7 +23,6 @@ import {
   weakWords,
 } from "@/lib/review";
 import { buildDeck, kanjiKey } from "@/lib/cards";
-import { GRAMMAR_NEW_PER_SESSION, uniqueGrammar } from "@/lib/grammar";
 import { useKanjiTable } from "@/lib/kanji";
 import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
 import { QUIZ_TYPES } from "@/lib/quiz";
@@ -68,11 +66,7 @@ function Study() {
   const current = isWeak ? weakPlan : songId ? plan.bySong[songId] : plan.all;
   const total = current.queue.length;
   const startHref = isWeak ? WEAK_HREF : reviewHref(songId);
-  // 문법·한자 카드: 오늘 볼 수
-  const grammar = useMemo(() => {
-    const keys = uniqueGrammar(songs, order).map((g) => g.key);
-    return { total: keys.length, today: buildDeck(keys, cards, now, GRAMMAR_NEW_PER_SESSION).queue.length };
-  }, [songs, order, cards, now]);
+  // 한자 카드: 오늘 볼 수
   const kanjiInfo = useKanjiTable();
   const kanji = useMemo(() => {
     if (!kanjiInfo) return null;
@@ -165,15 +159,8 @@ function Study() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-[20px] font-bold">문법 · 한자</h2>
+        <h2 className="mb-3 text-[20px] font-bold">한자</h2>
         <ul className="card divide-y divide-line overflow-hidden">
-          <DeckRow
-            href={grammarHref()}
-            glyph="文"
-            title="문법 복습"
-            sub={grammar.total ? `노래 속 문형 ${grammar.total}개` : "노래를 추가하면 문형이 모여요"}
-            today={grammar.today}
-          />
           <DeckRow
             href={KANJI_HREF}
             glyph="字"
@@ -196,7 +183,7 @@ function Study() {
 
       <section>
         <h2 className="text-[20px] font-bold">문제 유형</h2>
-        <p className="mt-1 mb-3 text-[14px] leading-[1.55] text-ink-3">고른 유형이 섞여서 나와요. 처음 보는 단어는 뜻 떠올리기로.</p>
+        <p className="mt-1 mb-3 text-[14px] leading-[1.55] text-ink-3">고른 유형이 섞여서 나와요. 처음 보는 단어는 뜻 떠올리기로. 노래 속 문형도 사이사이 나와요.</p>
         <ul className="divide-y divide-line overflow-hidden rounded-3xl border border-line bg-surface">
           {QUIZ_TYPES.map(({ type, label, hint }) => {
             const on = quizTypes.includes(type);

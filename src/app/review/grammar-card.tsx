@@ -5,90 +5,13 @@ import { Icon } from "@/components/Icon";
 import { LyricLineRange, patternRange } from "@/components/LyricLineView";
 import { SpeakButton } from "@/components/SpeakButton";
 import { Spinner } from "@/components/Spinner";
-import { buildDeck, grammarKey } from "@/lib/cards";
-import { GRAMMAR_NEW_PER_SESSION, type GrammarItem, patternCore, uniqueGrammar } from "@/lib/grammar";
-import { grammarHref } from "@/lib/review";
+import { grammarKey } from "@/lib/cards";
+import { type GrammarItem, patternCore } from "@/lib/grammar";
 import { memoryOf, newCard } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Grade } from "@/lib/types";
 import { useLineExplanation } from "@/lib/use-line-explanation";
-import { BottomBar, Finished, GradeSheet, SessionHeader, Toast, useStudySession, WrongSheet } from "./parts";
-
-/** 노래에서 나온 문형을 간격 반복으로 복습한다. songId를 주면 그 노래 문형만. */
-export function GrammarSession({ songId }: { songId?: string }) {
-  const songs = useStore((s) => s.songs);
-  const order = useStore((s) => s.order);
-  // 보기로 쓸 문형: 모은 문형 전체
-  const pool = useMemo(() => uniqueGrammar(songs, order), [songs, order]);
-  const [{ initial, items }] = useState(() => {
-    const { songs, order, cards } = useStore.getState();
-    const list = uniqueGrammar(songs, order, songId);
-    const { queue } = buildDeck(
-      list.map((g) => g.key),
-      cards,
-      Date.now(),
-      GRAMMAR_NEW_PER_SESSION,
-    );
-    return { initial: queue, items: Object.fromEntries(list.map((g) => [g.key, g])) as Record<string, GrammarItem> };
-  });
-  const session = useStudySession({
-    initial,
-    keyOf: (key) => key,
-    nameOf: (key) => items[key]?.pattern ?? "",
-    countNew: false,
-  });
-  const current = session.current ? items[session.current] : undefined;
-  const exitHref = songId ? `/songs/${songId}` : "/study";
-
-  const finished = !current;
-  const [now] = useState(Date.now);
-  const freshLeft = useMemo(() => {
-    if (!finished) return 0;
-    const { songs, order, cards } = useStore.getState();
-    const keys = uniqueGrammar(songs, order, songId).map((g) => g.key);
-    return buildDeck(keys, cards, now, 0).freshTotal;
-  }, [finished, songId, now]);
-
-  return (
-    <>
-      {current ? (
-        <GrammarCard
-          key={`${session.current}:${session.pos}`}
-          item={current}
-          pool={pool}
-          pos={session.pos}
-          total={session.queue.length}
-          isNew={session.fresh.has(session.current)}
-          exitHref={exitHref}
-          onAnswer={session.answer}
-          onLearned={session.markedLearned}
-        />
-      ) : (
-        <Finished
-          unit="문법"
-          total={session.stats.done}
-          learned={session.stats.learned}
-          short={session.stats.short}
-          songTitle={songId ? songs[songId]?.title : undefined}
-          empty={session.queue.length === 0}
-          emptyText={
-            pool.length === 0
-              ? "노래를 추가하면 가사 속 문법이 모여요."
-              : "지금 복습할 문법이 없어요. 다시 볼 때가 되면 생겨요."
-          }
-          studiedNew={session.fresh.size > 0}
-          exitHref={exitHref}
-          more={
-            freshLeft > 0
-              ? { href: grammarHref(songId), label: `새 문법 ${Math.min(GRAMMAR_NEW_PER_SESSION, freshLeft)}개 더` }
-              : null
-          }
-        />
-      )}
-      <Toast toast={session.toast} />
-    </>
-  );
-}
+import { BottomBar, GradeSheet, SessionHeader, WrongSheet } from "./parts";
 
 function shuffle<T>(list: T[]): T[] {
   const a = [...list];
@@ -114,7 +37,8 @@ function makeQuiz(item: GrammarItem, pool: GrammarItem[], isNew: boolean): Quiz 
   return { type: "blank", answer, choices: shuffle([answer, ...shuffle(others).slice(0, 3)]) };
 }
 
-function GrammarCard({
+/** 학습 목록 속 문형 카드: 처음 보면 뜻 떠올리기, 다시 볼 때는 가사 빈칸에 들어갈 문형 고르기 */
+export function GrammarCard({
   item,
   pool,
   pos,
@@ -267,7 +191,7 @@ function GrammarCard({
         <button
           type="button"
           onClick={() => {
-            setLearned(item.key, true, { countNew: false });
+            setLearned(item.key, true);
             onLearned();
           }}
           className="press btn-ghost mt-3 flex h-[52px] w-full items-center justify-center text-[15px] font-semibold"

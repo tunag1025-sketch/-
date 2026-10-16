@@ -1,4 +1,5 @@
-import { cardKey, uniqueVocab } from "./cards";
+import { cardKey, grammarKey, uniqueVocab } from "./cards";
+import type { GrammarItem } from "./grammar";
 import { isDue } from "./srs";
 import { dayKey } from "./stats";
 import type { CardState, Song, VocabItem } from "./types";
@@ -22,10 +23,17 @@ export function remainingNew(dailyNew: number, newLog: Record<string, number>, n
   return Math.max(0, dailyNew - (newLog[dayKey(now)] ?? 0));
 }
 
+/** 학습 목록의 한 장: 단어 카드거나, 노래 속 문형 카드 */
+export type QueueEntry =
+  | { kind: "word"; id: string; key: string; item: VocabItem }
+  | { kind: "grammar"; id: string; key: string; item: GrammarItem };
+
 /**
- * 학습할 카드 목록: 기한이 된 카드 먼저(오래된 순), 그다음 새 카드(최근 노래부터).
- * 장기기억 단어는 넣지 않는다. songId를 주면 그 노래 단어만.
- * 여러 노래에 나오는 단어는 한 번만 넣는다 (카드를 같이 쓰니 다른 노래에서 배웠으면 새 단어가 아니다).
+ * 학습할 카드 목록: 기한이 된 카드 먼저(오래된 순), 그다음 새 카드(최근 노래부터, 노래 안에서는 가사 줄 순서로
+ * 단어와 문형을 섞는다. 같은 줄이면 단어 다음에 문형).
+ * 문형도 단어처럼 함께 학습하고 하루 새 단어 몫도 같이 쓴다.
+ * 장기기억은 넣지 않는다. songId를 주면 그 노래 것만.
+ * 여러 노래에 나오는 단어·문형은 한 번만 넣는다 (카드를 같이 쓰니 다른 노래에서 배웠으면 새 카드가 아니다).
  */
 export function buildQueue(
   songs: Record<string, Song>,
@@ -33,24 +41,34 @@ export function buildQueue(
   cards: Record<string, CardState>,
   now: number,
   opts: { songId?: string; newLimit: number },
-): { queue: VocabItem[]; dueCount: number; newCount: number; freshTotal: number } {
-  const due: VocabItem[] = [];
-  const fresh: VocabItem[] = [];
+): { queue: QueueEntry[]; dueCount: number; newCount: number; freshTotal: number } {
+  const due: QueueEntry[] = [];
+  const fresh: QueueEntry[] = [];
   const seen = new Set<string>();
+  const add = (entry: QueueEntry) => {
+    if (seen.has(entry.key)) return;
+    seen.add(entry.key);
+    const card = cards[entry.key];
+    if (!card) fresh.push(entry);
+    else if (isDue(card, now)) due.push(entry);
+  };
   for (const id of order) {
     if (opts.songId && id !== opts.songId) continue;
     const song = songs[id];
     if (!song || song.status !== "ready") continue;
-    for (const item of song.vocab) {
-      const key = cardKey(item);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const card = cards[key];
-      if (!card) fresh.push(item);
-      else if (isDue(card, now)) due.push(item);
-    }
+    const inSong: { line: number; entry: QueueEntry }[] = [
+      ...song.vocab.map((item) => ({
+        line: item.lines.length ? Math.min(...item.lines) : Infinity,
+        entry: { kind: "word", id: item.id, key: cardKey(item), item } as const,
+      })),
+      ...song.grammar.map((g, i) => {
+        const key = grammarKey(g.pattern);
+        return { line: g.line + 0.5, entry: { kind: "grammar", id: `${song.id}#${i}`, key, item: { ...g, key, song } } as const };
+      }),
+    ];
+    for (const { entry } of inSong.sort((a, b) => a.line - b.line)) add(entry);
   }
-  due.sort((a, b) => cards[cardKey(a)].due - cards[cardKey(b)].due);
+  due.sort((a, b) => cards[a.key].due - cards[b.key].due);
   const newTaken = fresh.slice(0, opts.newLimit);
   return { queue: [...due, ...newTaken], dueCount: due.length, newCount: newTaken.length, freshTotal: fresh.length };
 }
@@ -71,8 +89,7 @@ export function weakWords(songs: Record<string, Song>, order: string[], cards: R
     .sort((a, b) => lapses(b) - lapses(a) || cards[cardKey(a)].due - cards[cardKey(b)].due);
 }
 
-/** 문법·한자·자주 틀린 단어 학습 주소 */
-export const grammarHref = (songId?: string) => `/review?kind=grammar${songId ? `&song=${songId}` : ""}`;
+/** 한자·자주 틀린 단어 학습 주소 */
 export const KANJI_HREF = "/review?kind=kanji";
 export const WEAK_HREF = "/review?kind=weak";
 

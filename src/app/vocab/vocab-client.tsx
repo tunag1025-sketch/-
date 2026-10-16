@@ -10,11 +10,11 @@ import { Sheet } from "@/components/Sheet";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
 import { buildDeck, cardKey, cardOf, kanjiKey, uniqueVocab } from "@/lib/cards";
-import { GRAMMAR_NEW_PER_SESSION, uniqueGrammar } from "@/lib/grammar";
+import { uniqueGrammar } from "@/lib/grammar";
 import { useKanjiTable } from "@/lib/kanji";
 import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
 import { kataToHira } from "@/lib/furigana";
-import { buildQueue, grammarHref, KANJI_HREF, remainingNew, reviewHref } from "@/lib/review";
+import { buildQueue, KANJI_HREF, remainingNew, reviewHref } from "@/lib/review";
 import { isDue, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { VocabItem } from "@/lib/types";
@@ -55,16 +55,17 @@ function VocabBook({ openWord, initialView }: { openWord?: string; initialView: 
     () => (kanjiInfo ? kanjiDeck(songs, order, kanjiInfo).map((k) => kanjiKey(k.char)) : null),
     [kanjiInfo, songs, order],
   );
-  const today = useMemo(
-    () => ({
-      word: buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }).queue.length,
-      grammar: buildDeck(grammar, cards, now, GRAMMAR_NEW_PER_SESSION).queue.length,
+  // 문형은 단어 학습에 섞여 나오니 단어와 같은 목록으로 학습한다
+  const today = useMemo(() => {
+    const words = buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }).queue.length;
+    return {
+      word: words,
+      grammar: words,
       kanji: kanji ? buildDeck(kanji, cards, now, KANJI_NEW_PER_SESSION).queue.length : 0,
-    }),
-    [songs, order, cards, now, dailyNew, newLog, grammar, kanji],
-  );
+    };
+  }, [songs, order, cards, now, dailyNew, newLog, kanji]);
   const sizes: Record<View, number | null> = { word: words.length, grammar: grammar.length, kanji: kanji?.length ?? null };
-  const href = { word: reviewHref(), grammar: grammarHref(), kanji: KANJI_HREF }[view];
+  const href = { word: reviewHref(), grammar: reviewHref(), kanji: KANJI_HREF }[view];
   const n = today[view];
 
   return (

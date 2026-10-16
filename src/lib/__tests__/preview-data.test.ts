@@ -46,7 +46,8 @@ describe("preview sample data", () => {
     const { dueCount, newCount } = buildQueue(state.songs, state.order, state.cards, now, {
       newLimit: remainingNew(state.settings.dailyNew, state.newLog, now),
     });
-    expect(dueCount).toBe(5);
+    // 단어 5개 + 문형 2개
+    expect(dueCount).toBe(7);
     expect(newCount).toBeGreaterThan(0);
     expect(streak(state.reviewLog, now)).toBe(5);
   });

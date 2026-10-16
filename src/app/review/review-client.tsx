@@ -10,29 +10,43 @@ import { SpeakButton } from "@/components/SpeakButton";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
 import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
+import { uniqueGrammar } from "@/lib/grammar";
 import { speak } from "@/lib/speech";
-import { buildQueue, EXTRA_NEW, remainingNew, reviewHref, WEAK_LIMIT, weakWords } from "@/lib/review";
+import {
+  buildQueue,
+  EXTRA_NEW,
+  type QueueEntry,
+  remainingNew,
+  reviewHref,
+  WEAK_LIMIT,
+  weakWords,
+} from "@/lib/review";
 import { PREVIEW } from "@/lib/preview";
 import { blankAnswer, canAsk, makeChoices, pickQuizType, QUIZ_TYPES, type QuizType, readingMatches } from "@/lib/quiz";
 import { memoryOf, newCard } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Grade, Song, VocabItem } from "@/lib/types";
 import { useLineExplanation } from "@/lib/use-line-explanation";
-import { GrammarSession } from "./grammar-session";
+import { GrammarCard } from "./grammar-card";
 import { KanjiSession } from "./kanji-session";
 import { BottomBar, Finished, GradeSheet, SessionHeader, Toast, useStudySession, WrongSheet } from "./parts";
 
 /**
- * 화면 미리보기에서 주소로 고르는 상태: 첫 문제 유형(quiz), 답을 본 상태(reveal=1 맞힘 / wrong 틀림),
- * 학습을 마친 화면(done)
+ * 화면 미리보기에서 주소로 고르는 상태: 첫 문제 유형(quiz, grammar면 문형 카드),
+ * 답을 본 상태(reveal=1 맞힘 / wrong 틀림), 학습을 마친 화면(done)
  */
-type Look = { quiz?: QuizType; reveal?: "right" | "wrong"; done: boolean };
+type Look = { quiz?: QuizType; grammar: boolean; reveal?: "right" | "wrong"; done: boolean };
 
 function previewLook(params: URLSearchParams): Look | undefined {
   if (!PREVIEW) return undefined;
   const quiz = QUIZ_TYPES.find((t) => t.type === params.get("quiz"))?.type;
   const reveal = params.get("reveal");
-  return { quiz, reveal: reveal === "wrong" ? "wrong" : reveal ? "right" : undefined, done: params.has("done") };
+  return {
+    quiz,
+    grammar: params.get("quiz") === "grammar",
+    reveal: reveal === "wrong" ? "wrong" : reveal ? "right" : undefined,
+    done: params.has("done"),
+  };
 }
 
 export function ReviewClient() {
@@ -43,9 +57,7 @@ export function ReviewClient() {
   const look = previewLook(params);
   return (
     <HydrationGate>
-      {kind === "grammar" ? (
-        <GrammarSession key={`g:${songId}`} songId={songId} />
-      ) : kind === "kanji" ? (
+      {kind === "kanji" ? (
         <KanjiSession />
       ) : (
         <ReviewSession
@@ -74,42 +86,54 @@ function ReviewSession({
 }) {
   const songs = useStore((s) => s.songs);
   const order = useStore((s) => s.order);
-  // 보기(오답)로 쓸 단어: 모은 단어 전체
+  // 보기(오답)로 쓸 단어·문형: 모은 것 전체
   const pool = useMemo(() => uniqueVocab(songs, order), [songs, order]);
+  const grammarPool = useMemo(() => uniqueGrammar(songs, order), [songs, order]);
 
   // 시작할 때의 목록을 고정한다. "다시"를 누른 카드는 뒤에 다시 붙인다.
-  // 처음 배우는 단어는 '학습', 다시 보는 단어는 '복습'으로 보여 준다.
-  const [initial] = useState(() => {
+  // 처음 배우는 카드는 '학습', 다시 보는 카드는 '복습'으로 보여 준다. 문형도 단어 사이에 섞여 나온다.
+  const [entries] = useState<QueueEntry[]>(() => {
     const { songs, order, cards, newLog, settings } = useStore.getState();
     const now = Date.now();
-    if (weak) return weakWords(songs, order, cards).slice(0, WEAK_LIMIT).map((v) => v.id);
+    if (weak) {
+      return weakWords(songs, order, cards)
+        .slice(0, WEAK_LIMIT)
+        .map((v) => ({ kind: "word", id: v.id, key: cardKey(v), item: v }));
+    }
     const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
     const { queue } = buildQueue(songs, order, cards, now, { songId, newLimit });
-    if (look?.quiz) {
-      // 미리보기: 고른 유형으로 낼 수 있는 단어를 맨 앞으로 (다시 보는 단어를 먼저 고른다)
-      const pool = uniqueVocab(songs, order);
-      const fits = (v: VocabItem) => canAsk(look.quiz!, v, songs[v.songId], pool.length);
-      const first = queue.find((v) => fits(v) && cardOf(cards, v)) ?? queue.find(fits);
-      if (first) queue.splice(0, queue.length, first, ...queue.filter((v) => v !== first));
+    // 미리보기: 고른 유형으로 낼 수 있는 카드를 맨 앞으로 (다시 보는 카드를 먼저 고른다)
+    const vocabCount = uniqueVocab(songs, order).length;
+    const fits = look?.grammar
+      ? (e: QueueEntry) => e.kind === "grammar"
+      : look?.quiz
+        ? (e: QueueEntry) => e.kind === "word" && canAsk(look.quiz!, e.item, songs[e.item.songId], vocabCount)
+        : null;
+    if (fits) {
+      const first = queue.find((e) => fits(e) && cards[e.key]) ?? queue.find(fits);
+      if (first) queue.splice(0, queue.length, first, ...queue.filter((e) => e !== first));
     }
-    return queue.map((v) => v.id);
+    return queue;
   });
-  const findItem = (id: string | undefined) => {
-    const song = id ? songs[id.split(":")[0]] : undefined;
-    const item = song?.vocab.find((v) => v.id === id);
-    return song && item ? { song, item } : undefined;
-  };
+  const byId = useMemo(() => new Map(entries.map((e) => [e.id, e])), [entries]);
   const session = useStudySession({
-    initial,
-    keyOf: (id) => cardKey(findItem(id)?.item ?? { word: id }),
-    nameOf: (id) => findItem(id)?.item.word ?? "",
+    initial: entries.map((e) => e.id),
+    keyOf: (id) => byId.get(id)?.key ?? id,
+    nameOf: (id) => {
+      const e = byId.get(id);
+      return !e ? "" : e.kind === "word" ? e.item.word : e.item.pattern;
+    },
   });
   const { queue, pos, stats } = session;
-  const current = findItem(session.current);
-  const next = findItem(session.next);
+  const wordOf = (e: QueueEntry | undefined) =>
+    e?.kind === "word" && songs[e.item.songId] ? { song: songs[e.item.songId], item: e.item } : undefined;
+  const entry = session.current ? byId.get(session.current) : undefined;
+  const grammar = entry?.kind === "grammar" ? entry.item : undefined;
+  const current = wordOf(entry);
+  const next = wordOf(session.next ? byId.get(session.next) : undefined);
   const exitHref = songId ? `/songs/${songId}` : "/";
   // 오늘 몫을 다 배웠어도 아직 안 배운 단어가 남았으면 더 학습할 수 있게 한다.
-  const finished = !current;
+  const finished = !current && !grammar;
   const [now] = useState(Date.now);
   const more = useMemo(() => {
     if (!finished || weak) return null;
@@ -136,7 +160,19 @@ function ReviewSession({
 
   return (
     <>
-      {current ? (
+      {grammar ? (
+        <GrammarCard
+          key={`${session.current}:${pos}`}
+          item={grammar}
+          pool={grammarPool}
+          pos={pos}
+          total={queue.length}
+          isNew={session.fresh.has(session.current)}
+          exitHref={exitHref}
+          onAnswer={session.answer}
+          onLearned={session.markedLearned}
+        />
+      ) : current ? (
         <ReviewCard
           key={`${session.current}:${pos}`}
           song={current.song}

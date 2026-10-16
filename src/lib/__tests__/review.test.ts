@@ -1,17 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { buildQueue, clampDailyNew, remainingNew } from "../review";
+import { buildQueue, clampDailyNew, type QueueEntry, remainingNew } from "../review";
 import { newCard } from "../srs";
 import { dayKey } from "../stats";
-import type { CardState, Song, VocabItem } from "../types";
+import type { CardState, GrammarPoint, Song, VocabItem } from "../types";
 
 const now = 1_700_000_000_000;
 
-function song(id: string, words: string[]): Song {
+function song(id: string, words: string[], patterns: string[] = []): Song {
   const vocab = words.map(
     (word) => ({ id: `${id}:${word}`, songId: id, word, lines: [], examples: [] }) as unknown as VocabItem,
   );
-  return { id, title: id, artist: "", level: "N4", createdAt: 0, lines: [], status: "ready", vocab, grammar: [] };
+  const grammar: GrammarPoint[] = patterns.map((pattern) => ({ pattern, meaning: "", line: 0, explanation: "" }));
+  return { id, title: id, artist: "", level: "N4", createdAt: 0, lines: [], status: "ready", vocab, grammar };
 }
+
+const nameOf = (e: QueueEntry) => (e.kind === "word" ? e.item.word : e.item.pattern);
 
 const songs = { a: song("a", ["一", "二", "三"]), b: song("b", ["四", "五"]) };
 const order = ["a", "b"];
@@ -20,7 +23,7 @@ describe("buildQueue", () => {
   it("puts due cards first, then new cards up to the limit", () => {
     const cards: Record<string, CardState> = { 四: { ...newCard(now - 10), due: now - 5 } };
     const { queue, dueCount, newCount, freshTotal } = buildQueue(songs, order, cards, now, { newLimit: 2 });
-    expect(queue.map((v) => v.word)).toEqual(["四", "一", "二"]);
+    expect(queue.map(nameOf)).toEqual(["四", "一", "二"]);
     expect([dueCount, newCount, freshTotal]).toEqual([1, 2, 4]);
   });
 
@@ -30,18 +33,18 @@ describe("buildQueue", () => {
       二: { ...newCard(now), due: now + 1000 },
     };
     const { queue } = buildQueue(songs, order, cards, now, { newLimit: 10 });
-    expect(queue.map((v) => v.word)).toEqual(["三", "四", "五"]);
+    expect(queue.map(nameOf)).toEqual(["三", "四", "五"]);
   });
 
   it("can limit the queue to one song", () => {
     const { queue } = buildQueue(songs, order, {}, now, { songId: "b", newLimit: 10 });
-    expect(queue.map((v) => v.word)).toEqual(["四", "五"]);
+    expect(queue.map(nameOf)).toEqual(["四", "五"]);
   });
 
   it("asks a word that appears in two songs only once", () => {
     const both = { ...songs, c: song("c", ["二", "六"]) };
     const { queue, freshTotal } = buildQueue(both, ["c", ...order], {}, now, { newLimit: 10 });
-    expect(queue.map((v) => v.id)).toEqual(["c:二", "c:六", "a:一", "a:三", "b:四", "b:五"]);
+    expect(queue.map((e) => e.id)).toEqual(["c:二", "c:六", "a:一", "a:三", "b:四", "b:五"]);
     expect(freshTotal).toBe(6);
   });
 
@@ -49,8 +52,22 @@ describe("buildQueue", () => {
     const both = { ...songs, c: song("c", ["二", "六"]) };
     const cards: Record<string, CardState> = { 二: { ...newCard(now), due: now + 1000, reps: 1, correct: 1 } };
     const { queue, newCount } = buildQueue(both, ["c", ...order], cards, now, { songId: "c", newLimit: 10 });
-    expect(queue.map((v) => v.word)).toEqual(["六"]);
+    expect(queue.map(nameOf)).toEqual(["六"]);
     expect(newCount).toBe(1);
+  });
+
+  it("mixes grammar points in with the words in lyric-line order, sharing the new-card limit", () => {
+    const a = song("a", ["一", "二", "三"], ["〜ても", "〜て"]);
+    a.vocab.forEach((v, i) => (v.lines = [i * 2])); // 一: 0줄, 二: 2줄, 三: 4줄
+    a.grammar[0].line = 2; // 〜ても: 2줄 (二 다음)
+    a.grammar[1].line = 5;
+    const withGrammar = { a, b: song("b", ["四"], ["〜ても"]) };
+    const cards: Record<string, CardState> = { "문법:〜て": { ...newCard(now - 10), due: now - 5 } };
+    const { queue, dueCount, newCount, freshTotal } = buildQueue(withGrammar, order, cards, now, { newLimit: 4 });
+    expect(queue.map(nameOf)).toEqual(["〜て", "一", "二", "〜ても", "三"]);
+    expect(queue.map((e) => e.kind)).toEqual(["grammar", "word", "word", "grammar", "word"]);
+    expect(queue[0].key).toBe("문법:〜て");
+    expect([dueCount, newCount, freshTotal]).toEqual([1, 4, 5]);
   });
 });
 

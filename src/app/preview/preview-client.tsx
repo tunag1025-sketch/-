@@ -50,7 +50,7 @@ const GROUPS: { title: string; dark?: boolean; screens: Screen[] }[] = [
       { path: "/review?quiz=reading", title: "학습 · 읽는 법 쓰기" },
       { path: "/review?quiz=reading&reveal=1", title: "학습 · 맞혔을 때" },
       { path: "/review?done=1", title: "학습 · 다 했어요" },
-      { path: "/review?kind=grammar", title: "문법 복습", note: "문형 뜻 떠올리기 · 가사 빈칸" },
+      { path: "/review?quiz=grammar", title: "학습 · 문형 카드", note: "단어 사이에 섞여 나와요 · 뜻 떠올리기 · 가사 빈칸" },
       { path: "/review?kind=kanji", title: "한자 카드", note: "훈음 떠올리기 · 고르기" },
       { path: "/review?kind=weak", title: "자주 틀린 단어" },
     ],

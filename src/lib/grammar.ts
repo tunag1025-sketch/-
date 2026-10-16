@@ -4,9 +4,6 @@ import type { GrammarPoint, Song } from "./types";
 /** 문법 카드 하나: 문형과 그 문형이 나온 노래·가사 줄 */
 export type GrammarItem = GrammarPoint & { key: string; song: Song };
 
-/** 한 번에 새로 배우는 문형 수 */
-export const GRAMMAR_NEW_PER_SESSION = 5;
-
 /**
  * 준비된 노래들의 문형을 문형마다 하나씩 (최근 노래 것을 먼저).
  * songId를 주면 그 노래 문형만.
