@@ -6,9 +6,16 @@ import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "@fontsource-variable/outfit";
 import "./globals.css";
 
+const TITLE = "Utango · 노래로 배우는 일본어";
+const DESCRIPTION = "좋아하는 노래 가사를 붙여넣으면 AI가 단어장과 예문을 만들어 주는 일본어 공부 앱";
+
 export const metadata: Metadata = {
-  title: "Utango · 노래로 배우는 일본어",
-  description: "좋아하는 노래 가사를 붙여넣으면 AI가 단어장과 예문을 만들어 주는 일본어 공부 앱",
+  // 링크 미리보기(카카오톡 등)의 이미지 주소를 절대 주소로 만든다.
+  metadataBase: new URL(process.env.APP_URL || "https://utango.vercel.app"),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { title: TITLE, description: DESCRIPTION, siteName: "Utango", locale: "ko_KR", type: "website" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
   applicationName: "Utango",
   appleWebApp: { capable: true, title: "Utango", statusBarStyle: "default" },
   icons: {
