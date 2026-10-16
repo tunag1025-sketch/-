@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
-import { Icon } from "@/components/Icon";
+import { Icon, IconCircle } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
-import { Mascot, MascotGroup, type MascotKind, Twinkle } from "@/components/Mascots";
 import { CircleLink, Headline } from "@/components/PageHeader";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { buildQueue } from "@/lib/review";
@@ -15,12 +14,12 @@ import { streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 import type { Grade } from "@/lib/types";
 
-// 답은 캐릭터로 고른다: 하트(다시) · 공(어려움) · 덩어리(알맞음) · 별(쉬움)
-const GRADES: { grade: Grade; label: string; mascot: MascotKind }[] = [
-  { grade: "again", label: "다시", mascot: "heart" },
-  { grade: "hard", label: "어려움", mascot: "ball" },
-  { grade: "good", label: "알맞음", mascot: "blob" },
-  { grade: "easy", label: "쉬움", mascot: "star" },
+// 답마다 색을 달리한다: 다시(빨강) · 어려움(회색) · 알맞음(파랑) · 쉬움(보라)
+const GRADES: { grade: Grade; label: string; tone: string }[] = [
+  { grade: "again", label: "다시", tone: "var(--danger)" },
+  { grade: "hard", label: "어려움", tone: "var(--ink-2)" },
+  { grade: "good", label: "알맞음", tone: "var(--blue)" },
+  { grade: "easy", label: "쉬움", tone: "var(--violet)" },
 ];
 
 export function ReviewClient() {
@@ -115,7 +114,6 @@ function ReviewSession({ songId }: { songId?: string }) {
             </>
           )}
         </div>
-        <Twinkle color="#a9c9ff" className="absolute top-4 right-5 size-4" />
       </article>
 
       {revealed && (
@@ -131,17 +129,17 @@ function ReviewSession({ songId }: { songId?: string }) {
               <p className="text-center text-[15px] font-semibold">
                 이 단어, <span className="grad-text">어땠어요?</span>
               </p>
-              <div className="iris mt-3 grid grid-cols-4 rounded-[22px] px-1 pt-2 pb-2.5">
+              <div className="mt-3 grid grid-cols-4 gap-2">
                 {GRADES.map((g) => (
                   <button
                     key={g.grade}
                     type="button"
                     onClick={() => answer(g.grade)}
-                    className="press flex flex-col items-center gap-0.5 rounded-2xl py-1"
+                    className="press flex flex-col items-center gap-0.5 rounded-2xl py-3"
+                    style={{ color: g.tone, background: `color-mix(in srgb, ${g.tone} 10%, var(--surface))` }}
                   >
-                    <Mascot kind={g.mascot} className="size-12" />
-                    <span className="mt-0.5 text-[14px] font-semibold">{g.label}</span>
-                    <span className="num text-[12px] text-ink-3">{intervalLabel(card, g.grade, now)}</span>
+                    <span className="text-[15px] font-semibold">{g.label}</span>
+                    <span className="num text-[12px] font-medium opacity-70">{intervalLabel(card, g.grade, now)}</span>
                   </button>
                 ))}
               </div>
@@ -178,7 +176,11 @@ function Finished({
 
   return (
     <div className="flex flex-col items-center pt-14 text-center">
-      {empty ? <Mascot kind="ball" className="float size-24" /> : <MascotGroup className="float w-44" />}
+      {empty ? (
+        <IconCircle name="cards" className="size-20" />
+      ) : (
+        <IconCircle name="check" tone="solid" className="size-20" />
+      )}
       <Headline
         className="mt-6 text-[28px]"
         first={empty ? "지금은" : "오늘 복습"}

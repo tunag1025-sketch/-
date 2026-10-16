@@ -36,3 +36,27 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
     </svg>
   );
 }
+
+const TONES = {
+  blue: "bg-blue-soft text-blue",
+  danger: "bg-danger/10 text-danger",
+  muted: "bg-muted text-ink-3",
+  solid: "btn-primary",
+} as const;
+
+/** 동그라미 안의 아이콘 (빈 화면, 안내 문구 등) */
+export function IconCircle({
+  name,
+  tone = "blue",
+  className = "size-14",
+}: {
+  name: IconName;
+  tone?: keyof typeof TONES;
+  className?: string;
+}) {
+  return (
+    <span className={`grid shrink-0 place-items-center rounded-full ${TONES[tone]} ${className}`}>
+      <Icon name={name} className="size-[44%]" />
+    </span>
+  );
+}

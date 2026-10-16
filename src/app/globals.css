@@ -2,7 +2,7 @@
 
 /*
  * Layout: 하얀 바탕 위에 부드러운 카드, 제목 둘째 줄은 블루→바이올렛→핑크 그라데이션,
- * 캐릭터 넷(음표·피크·말풍선·하트)이 감정과 상태를 맡는다. 탭바는 떠 있는 유리 동그라미 + 파란 + 버튼.
+ * 큰 숫자와 아이콘 동그라미로 상태를 보여 준다. 탭바는 떠 있는 유리 동그라미 + 파란 + 버튼.
  */
 :root {
   --bg: #f7f8fc;
@@ -252,20 +252,6 @@ rt {
   border-radius: 6px;
   padding: 0 0.15em;
   font-weight: 700;
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(var(--tilt, 0deg));
-  }
-  50% {
-    transform: translateY(-6px) rotate(var(--tilt, 0deg));
-  }
-}
-
-.float {
-  animation: float 4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

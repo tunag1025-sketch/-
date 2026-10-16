@@ -1,18 +1,35 @@
-import { Mascot, mascotFor } from "./Mascots";
+import { Icon } from "./Icon";
 
-const BG = {
-  blob: "linear-gradient(140deg, #e3f0ff, #c8ddff)",
-  star: "linear-gradient(140deg, #fff7d9, #ffe9a8)",
-  ball: "linear-gradient(140deg, #ffe8f3, #ffd0e6)",
-  heart: "linear-gradient(140deg, #ffe9e6, #ffcfca)",
-} as const;
+const TONES = ["var(--blue)", "var(--violet)", "var(--pink)"] as const;
 
-/** 노래 커버: 노래마다 정해진 캐릭터와 파스텔 배경 */
-export function SongCover({ id, className = "size-[60px] rounded-[20px]" }: { id: string; className?: string }) {
-  const kind = mascotFor(id);
+function toneFor(id: string) {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return TONES[h % TONES.length];
+}
+
+/** 노래 커버: 제목 첫 글자를 노래마다 정해진 색의 타일에 */
+export function SongCover({
+  id,
+  title,
+  className = "size-[60px] rounded-[20px] text-[26px]",
+}: {
+  id: string;
+  title: string;
+  className?: string;
+}) {
+  const tone = toneFor(id);
+  const first = Array.from(title.trim()).find((c) => /[\p{L}\p{N}]/u.test(c));
   return (
-    <span className={`grid shrink-0 place-items-center overflow-hidden ${className}`} style={{ background: BG[kind] }}>
-      <Mascot kind={kind} className="w-[86%]" />
+    <span
+      className={`font-jp grid shrink-0 place-items-center font-bold ${className}`}
+      style={{
+        color: tone,
+        background: `linear-gradient(140deg, color-mix(in srgb, ${tone} 8%, var(--surface)), color-mix(in srgb, ${tone} 22%, var(--surface)))`,
+      }}
+      aria-hidden
+    >
+      {first ?? <Icon name="music" className="size-[40%]" />}
     </span>
   );
 }

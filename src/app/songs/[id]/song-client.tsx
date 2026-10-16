@@ -5,9 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
-import { Icon } from "@/components/Icon";
+import { Icon, IconCircle } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
-import { Mascot } from "@/components/Mascots";
 import { CircleButton, Headline, TopBar } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { SongCover } from "@/components/SongCover";
@@ -36,7 +35,7 @@ function SongScreen({ id }: { id: string }) {
   if (!song) {
     return (
       <div className="flex flex-col items-center pt-24 text-center">
-        <Mascot kind="ball" className="size-20" />
+        <IconCircle name="music" tone="muted" className="size-20" />
         <p className="mt-4 text-[18px] font-semibold">노래를 찾을 수 없어요</p>
         <p className="mt-1 text-[14px] text-ink-3">삭제됐거나 다른 기기에서 추가한 노래예요.</p>
         <Link href="/" className="btn-primary press mt-6 px-6 py-3 text-[15px] font-semibold">
@@ -83,7 +82,7 @@ function SongView({ song }: { song: Song }) {
             second={<span className="font-sans">{song.artist || "아티스트 미상"}</span>}
           />
         </div>
-        <SongCover id={song.id} className="size-[76px] rounded-[26px]" />
+        <SongCover id={song.id} title={song.title} className="size-[76px] rounded-[26px] text-[34px]" />
       </section>
       {song.summary && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{song.summary}</p>}
 
@@ -209,7 +208,7 @@ function SongView({ song }: { song: Song }) {
 
       <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="노래 삭제">
         <div className="flex flex-col items-center text-center">
-          <Mascot kind="heart" className="size-16" />
+          <IconCircle name="trash" tone="danger" className="size-16" />
           <p className="font-jp mt-3 text-[20px] font-bold">{song.title}</p>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
             이 노래와 단어장, 복습 기록이 모두 지워져요.
@@ -257,11 +256,11 @@ function AnalysisStatus({ song }: { song: Song }) {
   if (song.status === "analyzing" && inFlight) {
     return (
       <div className="iris-card mt-5 flex items-center gap-3 px-4 py-4">
-        <Mascot kind="star" className="float size-12 shrink-0" />
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-blue-soft text-blue">
+          <Spinner className="size-5" />
+        </span>
         <div className="min-w-0 flex-1 text-[14px]">
-          <p className="flex items-center gap-1.5 font-semibold">
-            <Spinner className="size-3.5 text-blue" /> 단어장 만드는 중
-          </p>
+          <p className="font-semibold">단어장 만드는 중</p>
           <p className="text-ink-3">1~2분 걸려요. 그동안 가사를 먼저 읽어 보세요.</p>
         </div>
       </div>
@@ -273,7 +272,7 @@ function AnalysisStatus({ song }: { song: Song }) {
   return (
     <div className="card mt-5 px-4 py-4">
       <div className="flex gap-3">
-        <Mascot kind="ball" className="size-11 shrink-0" />
+        <IconCircle name="info" tone="danger" className="size-11" />
         <p className="text-[14px] leading-relaxed text-ink-2">{message}</p>
       </div>
       <button

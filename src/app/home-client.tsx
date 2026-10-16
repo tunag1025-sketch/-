@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
-import { Icon } from "@/components/Icon";
-import { Mascot, MascotGroup } from "@/components/Mascots";
+import { Icon, IconCircle } from "@/components/Icon";
 import { Headline } from "@/components/PageHeader";
 import { SongCover } from "@/components/SongCover";
 import { Spinner } from "@/components/Spinner";
@@ -83,34 +82,30 @@ function Home() {
           style={{ maskImage: "linear-gradient(to bottom, transparent, black)", WebkitMaskImage: "linear-gradient(to bottom, transparent, black)" }}
           aria-hidden
         />
-        <div className="relative flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] font-medium text-ink-3">
-              오늘 복습할 단어 <span className="num font-semibold text-blue">{queue.length}</span>개
+        <div className="relative flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-medium text-ink-3">오늘 복습할 단어</p>
+            <p className="mt-2 flex items-baseline gap-1">
+              <span className="num text-[56px] leading-none font-medium">{queue.length}</span>
+              <span className="text-[17px] font-semibold text-ink-2">개</span>
             </p>
-            <p className="mt-1.5 text-[19px] leading-snug font-semibold">
-              {queue.length ? (
-                <>
-                  노래 속 단어를
-                  <br />
-                  복습할 시간이에요
-                </>
-              ) : (
-                <>
-                  오늘 복습은
-                  <br />
-                  모두 끝났어요
-                </>
-              )}
-            </p>
-            {queue.length > 0 && (
-              <p className="mt-1 text-[13px] text-ink-3">
-                다시 볼 단어 {dueCount} · 새 단어 {newCount}
-              </p>
-            )}
           </div>
-          <MascotGroup className="w-[118px] shrink-0" />
+          {queue.length > 0 && (
+            <dl className="space-y-1 text-right text-[13px]">
+              <div className="flex justify-end gap-2">
+                <dt className="text-ink-3">다시 볼 단어</dt>
+                <dd className="num w-6 font-semibold">{dueCount}</dd>
+              </div>
+              <div className="flex justify-end gap-2">
+                <dt className="text-ink-3">새 단어</dt>
+                <dd className="num w-6 font-semibold">{newCount}</dd>
+              </div>
+            </dl>
+          )}
         </div>
+        <p className="relative mt-3 text-[15px] font-medium text-ink-2">
+          {queue.length ? "노래 속 단어를 복습할 시간이에요." : "오늘 복습은 모두 끝났어요."}
+        </p>
         <Link
           href={queue.length ? "/review" : "/songs/new"}
           className="btn-primary press relative mt-5 flex items-center justify-center py-3.5 text-[15px] font-semibold"
@@ -121,7 +116,7 @@ function Home() {
 
       {ai === false && (
         <p className="iris flex items-center gap-3 rounded-3xl px-4 py-3 text-[14px] leading-relaxed text-ink-2">
-          <Mascot kind="ball" className="size-10 shrink-0" />
+          <IconCircle name="info" className="size-10" />
           서버에 AI 키가 없어서 지금은 후리가나 가사와 데모곡만 쓸 수 있어요.
         </p>
       )}
@@ -195,7 +190,7 @@ function Home() {
         )}
         {order.length === 0 ? (
           <div className="card flex flex-col items-center px-5 py-9 text-center">
-            <Mascot kind="blob" className="float size-20" />
+            <IconCircle name="music" className="size-16" />
             <p className="mt-3 font-semibold">첫 노래를 추가해 보세요</p>
             <p className="text-[14px] text-ink-3">가사를 붙여넣으면 단어장이 만들어져요</p>
           </div>
@@ -231,7 +226,7 @@ function SongRow({ song, cards }: { song: Song; cards: Record<string, CardState>
   return (
     <li>
       <Link href={`/songs/${song.id}`} className="card press flex items-center gap-3.5 p-3">
-        <SongCover id={song.id} />
+        <SongCover id={song.id} title={song.title} />
         <div className="min-w-0 flex-1">
           <div className="font-jp truncate text-[16px] font-bold">{song.title}</div>
           <div className="truncate text-[13px] text-ink-3">

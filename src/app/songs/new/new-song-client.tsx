@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
-import { Mascot } from "@/components/Mascots";
 import { Headline, TopBar } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
 import { startAnalysis, tokenize } from "@/lib/api-client";
@@ -77,13 +76,6 @@ function NewSongForm() {
   return (
     <form onSubmit={submit} className="space-y-6 pb-4">
       <TopBar backHref="/" title="노래 추가" />
-
-      <div className="flex items-center gap-3">
-        <Mascot kind="star" className="float size-14 shrink-0" style={{ "--tilt": "-8deg" } as React.CSSProperties} />
-        <p className="rounded-2xl rounded-bl-md bg-surface px-3.5 py-2 text-[14px] font-medium text-ink-2 shadow-[var(--shadow)]">
-          가사만 붙여넣으면 나머지는 제가 할게요!
-        </p>
-      </div>
 
       <Headline className="text-[28px]" first="어떤 노래로" second="공부해 볼까요?" />
 
