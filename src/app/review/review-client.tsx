@@ -15,7 +15,8 @@ import { fetchExplanation } from "@/lib/api-client";
 import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
 import { speak } from "@/lib/speech";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
-import { blankAnswer, makeChoices, pickQuizType, type QuizType, readingMatches } from "@/lib/quiz";
+import { PREVIEW } from "@/lib/preview";
+import { blankAnswer, canAsk, makeChoices, pickQuizType, QUIZ_TYPES, type QuizType, readingMatches } from "@/lib/quiz";
 import { graduates, intervalLabel, memoryOf, newCard } from "@/lib/srs";
 import { streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
@@ -29,18 +30,32 @@ const GRADES: { grade: Grade; label: string; tone: string }[] = [
   { grade: "perfect", label: "완벽", tone: "var(--violet)" },
 ];
 
+/**
+ * 화면 미리보기에서 주소로 고르는 상태: 첫 문제 유형(quiz), 답을 본 상태(reveal=1 맞힘 / wrong 틀림),
+ * 학습을 마친 화면(done)
+ */
+type Look = { quiz?: QuizType; reveal?: "right" | "wrong"; done: boolean };
+
+function previewLook(params: URLSearchParams): Look | undefined {
+  if (!PREVIEW) return undefined;
+  const quiz = QUIZ_TYPES.find((t) => t.type === params.get("quiz"))?.type;
+  const reveal = params.get("reveal");
+  return { quiz, reveal: reveal === "wrong" ? "wrong" : reveal ? "right" : undefined, done: params.has("done") };
+}
+
 export function ReviewClient() {
   const params = useSearchParams();
   const songId = params.get("song") ?? undefined;
   const extra = Math.max(0, Number(params.get("extra")) || 0);
+  const look = previewLook(params);
   return (
     <HydrationGate>
-      <ReviewSession key={`${songId}:${extra}`} songId={songId} extra={extra} />
+      <ReviewSession key={`${songId}:${extra}`} songId={songId} extra={extra} look={look} />
     </HydrationGate>
   );
 }
 
-function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
+function ReviewSession({ songId, extra, look }: { songId?: string; extra: number; look?: Look }) {
   const songs = useStore((s) => s.songs);
   const order = useStore((s) => s.order);
   const grade = useStore((s) => s.grade);
@@ -54,6 +69,13 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
     const now = Date.now();
     const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
     const { queue } = buildQueue(songs, order, cards, now, { songId, newLimit });
+    if (look?.quiz) {
+      // 미리보기: 고른 유형으로 낼 수 있는 단어를 맨 앞으로 (다시 보는 단어를 먼저 고른다)
+      const pool = uniqueVocab(songs, order);
+      const fits = (v: VocabItem) => canAsk(look.quiz!, v, songs[v.songId], pool.length);
+      const first = queue.find((v) => fits(v) && cardOf(cards, v)) ?? queue.find(fits);
+      if (first) queue.splice(0, queue.length, first, ...queue.filter((v) => v !== first));
+    }
     return { initial: queue.map((v) => v.id), fresh: new Set(queue.filter((v) => !cardOf(cards, v)).map((v) => v.id)) };
   });
   const [queue, setQueue] = useState(initial);
@@ -103,6 +125,12 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
     advance(g !== "again", nowLearned && !wasLearned);
   }
 
+  if (look?.done) {
+    return (
+      <Finished total={19} learned={1} short={6} extra={extra} empty={false} studiedNew exitHref={exitHref} />
+    );
+  }
+
   return (
     <>
       {current ? (
@@ -111,6 +139,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
           song={current.song}
           item={current.item}
           pool={pool}
+          look={pos === 0 ? look : undefined}
           next={next}
           pos={pos}
           total={queue.length}
@@ -151,9 +180,10 @@ type Quiz =
   | { type: "recall" | "reading" }
   | { type: "choice" | "blank"; answer: string; choices: string[] };
 
-function makeQuiz(item: VocabItem, song: Song, pool: VocabItem[], enabled: QuizType[]): Quiz {
+function makeQuiz(item: VocabItem, song: Song, pool: VocabItem[], enabled: QuizType[], force?: QuizType): Quiz {
   const isNew = !cardOf(useStore.getState().cards, item);
-  const type = pickQuizType(enabled, item, song, pool.length, isNew);
+  const type =
+    force && canAsk(force, item, song, pool.length) ? force : pickQuizType(enabled, item, song, pool.length, isNew);
   if (type === "choice") {
     return { type, answer: item.word, choices: makeChoices(item, item.word, pool, (v) => v.word) };
   }
@@ -175,6 +205,7 @@ function ReviewCard({
   song,
   item,
   pool,
+  look,
   next,
   pos,
   total,
@@ -186,6 +217,8 @@ function ReviewCard({
   song: Song;
   item: VocabItem;
   pool: VocabItem[];
+  /** 화면 미리보기에서 고른 첫 문제 상태 */
+  look?: Look;
   next?: { song: Song; item: VocabItem };
   pos: number;
   /** 이번에 처음 배우는 단어인지 */
@@ -201,9 +234,13 @@ function ReviewCard({
   const autoSpeak = useStore((s) => s.settings.autoSpeak);
   // 뜻을 볼 때 발음을 들려준다 (iPhone은 누른 순간에 불러야 소리가 난다)
   const sayWord = () => autoSpeak && speak(item.reading || item.word);
-  const [quiz] = useState(() => makeQuiz(item, song, pool, quizTypes));
-  const [flipped, setFlipped] = useState(false);
-  const [picked, setPicked] = useState<string | null>(null);
+  const [quiz] = useState(() => makeQuiz(item, song, pool, quizTypes, look?.quiz));
+  const [flipped, setFlipped] = useState(quiz.type === "recall" && !!look?.reveal);
+  const [picked, setPicked] = useState<string | null>(() => {
+    if (!look?.reveal || quiz.type === "recall") return null;
+    if (!("choices" in quiz)) return look.reveal === "right" ? item.reading : "えっと";
+    return look.reveal === "right" ? quiz.answer : (quiz.choices.find((c) => c !== quiz.answer) ?? null);
+  });
   const [typed, setTyped] = useState("");
   const [now] = useState(Date.now);
   const state = card ?? newCard(now);

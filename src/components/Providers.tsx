@@ -2,9 +2,11 @@
 
 import { useEffect } from "react";
 import { loadAccount, useAccount } from "@/lib/account";
+import { useInFlight } from "@/lib/api-client";
 import demoSong from "@/lib/demo-song.json";
 import { explanationKey, useHydrated, useStore } from "@/lib/store";
-import { startSync, stopSync } from "@/lib/sync";
+import { applyPreviewTheme, PREVIEW, PREVIEW_ANALYZING_ID, PREVIEW_GUEST } from "@/lib/preview";
+import { startSync, stopSync, useSyncStatus } from "@/lib/sync";
 import type { Song } from "@/lib/types";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -22,6 +24,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }
         state.markDemoSeeded();
       }
+      if (PREVIEW) {
+        // 미리보기: 단어장을 만드는 중인 노래와 동기화된 상태를 그대로 보여 준다.
+        useInFlight.setState({ ids: new Set([PREVIEW_ANALYZING_ID]) });
+        if (!PREVIEW_GUEST) useSyncStatus.setState({ status: "synced", lastSynced: Date.now() - 2 * 60_000 });
+        applyPreviewTheme();
+      }
       useHydrated.setState({ hydrated: true });
       void loadAccount();
     };
@@ -38,7 +46,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const userId = useAccount((s) => s.user?.id);
   const hydrated = useHydrated((s) => s.hydrated);
   useEffect(() => {
-    if (!hydrated || !userId) return;
+    // 미리보기 데이터는 계정에 올리지 않는다.
+    if (!hydrated || !userId || PREVIEW) return;
     startSync(userId);
     return () => stopSync();
   }, [hydrated, userId]);

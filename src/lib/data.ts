@@ -37,6 +37,9 @@ export type UserData = {
   deleted: Record<string, number>;
 };
 
+/** 가사 한 줄 해설의 열쇠 */
+export const explanationKey = (songId: string, line: number) => `${songId}:${line}`;
+
 export const songTime = (s: Song) => s.updatedAt ?? s.createdAt;
 export { cardTime };
 

@@ -39,6 +39,16 @@ npm run dev                  # http://localhost:3000
 | `npm test` | 단위 테스트 (vitest). `TEST_DATABASE_URL`을 주면 DB 테스트도 돌아요 |
 | `npm run lint` | ESLint |
 | `npm run demo` | `scripts/demo-source.ts`를 고친 뒤 데모곡 데이터 다시 생성 |
+| `npm run preview-songs` | `scripts/preview-source.ts`를 고친 뒤 화면 미리보기용 샘플 노래 다시 생성 |
+
+## 화면 미리보기 (디자인 검토용)
+
+`/preview`를 열면 샘플 노래·학습 기록으로 모든 화면을 한 페이지에서 볼 수 있어요. 화면마다 따로 열리는 주소도 있어요
+(예: `/review?preview=1&quiz=choice&reveal=wrong`). 디자인 도구에 화면 주소를 하나씩 넣을 때 써요.
+
+- 주소에 `?preview=1`을 붙이면 그 탭이 미리보기가 되고, `?preview=0`이면 꺼져요.
+- 데이터는 그 탭의 sessionStorage에만 두고 서버 API는 가짜 응답으로 바꿔요. 진짜 기록과 계정, 동기화는 건드리지 않아요.
+- `as=guest` 로그인 전 화면, `theme=dark` 어두운 화면. 노래 `tab`·`word`·`line`, 단어장 `word`, 노래 추가 `q`로 처음 상태를 고를 수 있어요.
 
 ## 배포 (Vercel 추천)
 

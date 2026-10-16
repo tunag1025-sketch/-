@@ -32,34 +32,42 @@
   --short-term: #9dbcff;
 }
 
+/* 어두운 테마 색. 기기 설정을 따르고, 화면 미리보기(?theme=)에서는 data-theme로 고를 수 있다. */
+@utility theme-dark {
+  --bg: #0c0e15;
+  --surface: #151824;
+  --muted: #1d2130;
+  --line: #272c3d;
+  --ink: #f2f4fa;
+  --ink-2: #b4b9cb;
+  --ink-3: #8a90a4;
+  --blue: #4a86ff;
+  --blue-soft: #1a2647;
+  --violet: #a08bff;
+  --pink: #ff74a8;
+  --yellow: #ffcd5a;
+  --danger: #ff6b6f;
+  --mark: #22336a;
+  --mark-ink: #d3e2ff;
+  --grad-text: linear-gradient(90deg, #6ea0ff 0%, #a79dff 52%, #ffaccd 100%);
+  --grad-soft: linear-gradient(120deg, #16213d 0%, #201b3a 52%, #2c1929 100%);
+  --grad-edge: linear-gradient(120deg, #34518f, #4b3f87 52%, #7a3d5c);
+  --grad-btn: linear-gradient(180deg, #5f95ff 0%, #2f6dff 100%);
+  --shadow: 0 6px 24px rgb(0 0 0 / 0.35);
+  --glass: rgb(28 32 46 / 0.72);
+  --glass-edge: rgb(255 255 255 / 0.08);
+  --top-glow: #15213f;
+  --short-term: #3d5a9e;
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0c0e15;
-    --surface: #151824;
-    --muted: #1d2130;
-    --line: #272c3d;
-    --ink: #f2f4fa;
-    --ink-2: #b4b9cb;
-    --ink-3: #8a90a4;
-    --blue: #4a86ff;
-    --blue-soft: #1a2647;
-    --violet: #a08bff;
-    --pink: #ff74a8;
-    --yellow: #ffcd5a;
-    --danger: #ff6b6f;
-    --mark: #22336a;
-    --mark-ink: #d3e2ff;
-    --grad-text: linear-gradient(90deg, #6ea0ff 0%, #a79dff 52%, #ffaccd 100%);
-    --grad-soft: linear-gradient(120deg, #16213d 0%, #201b3a 52%, #2c1929 100%);
-    --grad-edge: linear-gradient(120deg, #34518f, #4b3f87 52%, #7a3d5c);
-    --grad-btn: linear-gradient(180deg, #5f95ff 0%, #2f6dff 100%);
-    --shadow: 0 6px 24px rgb(0 0 0 / 0.35);
-    --glass: rgb(28 32 46 / 0.72);
-    --glass-edge: rgb(255 255 255 / 0.08);
-    --top-glow: #15213f;
-    --short-term: #3d5a9e;
-    color-scheme: dark;
+  :root:not([data-theme="light"]) {
+    @apply theme-dark;
   }
+}
+:root[data-theme="dark"] {
+  @apply theme-dark;
 }
 
 @theme inline {

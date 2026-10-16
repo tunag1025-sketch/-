@@ -13,8 +13,8 @@ const TABS: { href: string; label: string; icon: IconName; match: (p: string) =>
 /** 떠 있는 유리 동그라미 탭 + (홈에서만) 파란 노래 추가 버튼 */
 export function BottomNav() {
   const pathname = usePathname();
-  // 복습 화면과 노래 추가 화면은 아래쪽을 자기 버튼에 쓴다.
-  if (pathname.startsWith("/review") || pathname === "/songs/new") return null;
+  // 복습 화면과 노래 추가 화면은 아래쪽을 자기 버튼에 쓴다. 화면 미리보기 모음에는 없다.
+  if (pathname.startsWith("/review") || pathname === "/songs/new" || pathname === "/preview") return null;
   return (
     <nav className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-30 px-5" aria-label="메뉴">
       <div className="mx-auto mb-4 flex max-w-sm items-center justify-between">

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint src",
     "test": "vitest run",
-    "demo": "node scripts/build-demo.ts"
+    "demo": "node scripts/build-demo.ts",
+    "preview-songs": "node scripts/build-preview.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

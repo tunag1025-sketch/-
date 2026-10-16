@@ -3,9 +3,10 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { migrateCards } from "./cards";
+import { PREVIEW, previewStorage } from "./preview";
 import { LEARNED_INTERVAL_DAYS, newCard, schedule } from "./srs";
 import { dayKey } from "./stats";
-import { DEFAULT_SETTINGS, mergeData, type Settings, type UserData } from "./data";
+import { DEFAULT_SETTINGS, explanationKey, mergeData, type Settings, type UserData } from "./data";
 import type { CardState, Grade, LineExplanation, Song } from "./types";
 
 type State = UserData & {
@@ -35,7 +36,9 @@ export function pickData(s: UserData): UserData {
   return { songs, order, cards, explanations, reviewLog, newLog, settings, deleted };
 }
 
-export const explanationKey = (songId: string, line: number) => `${songId}:${line}`;
+export { explanationKey };
+
+const STORE_VERSION = 2;
 
 export const useStore = create<State>()(
   persist(
@@ -124,8 +127,9 @@ export const useStore = create<State>()(
     }),
     {
       name: "utango-v1",
-      storage: createJSONStorage(() => localStorage),
-      version: 2,
+      // 화면 미리보기에서는 샘플 데이터를 이 탭에만 둔다 (진짜 기록은 건드리지 않는다).
+      storage: createJSONStorage(() => (PREVIEW ? previewStorage(STORE_VERSION) : localStorage)),
+      version: STORE_VERSION,
       migrate: (persisted, version) => {
         const state = persisted as Partial<State> & { cards?: Record<string, CardState & { suspended?: boolean }> };
         if (version < 1 && state.cards) {

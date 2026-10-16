@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
@@ -16,9 +17,11 @@ import { useStore } from "@/lib/store";
 import type { VocabItem } from "@/lib/types";
 
 export function VocabClient() {
+  // ?word= 로 열면 그 단어 카드를 펼쳐 둔다
+  const word = useSearchParams().get("word") ?? undefined;
   return (
     <HydrationGate>
-      <VocabList />
+      <VocabList openWord={word} />
     </HydrationGate>
   );
 }
@@ -31,7 +34,7 @@ const STATUSES: [Status, string][] = [
   ["long", "장기기억"],
 ];
 
-function VocabList() {
+function VocabList({ openWord }: { openWord?: string }) {
   const songs = useStore((s) => s.songs);
   const order = useStore((s) => s.order);
   const cards = useStore((s) => s.cards);
@@ -40,7 +43,9 @@ function VocabList() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>("all");
   const [songFilter, setSongFilter] = useState<string>("all");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(() =>
+    openWord ? (uniqueVocab(useStore.getState().songs, useStore.getState().order).find((v) => v.word === openWord)?.id ?? null) : null,
+  );
   const [now] = useState(Date.now);
 
   // 여러 노래에 나오는 단어는 한 번만 (카드도 하나를 같이 쓴다)

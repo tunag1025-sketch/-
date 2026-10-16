@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Headline, TopBar } from "@/components/PageHeader";
@@ -22,14 +22,16 @@ const LEVEL_HINT: Record<Level, string> = {
 };
 
 export function NewSongClient() {
+  // ?q= 로 열면 그 말로 노래를 찾아 둔다
+  const query = useSearchParams().get("q") ?? "";
   return (
     <HydrationGate>
-      <NewSongForm />
+      <NewSongForm initialQuery={query} />
     </HydrationGate>
   );
 }
 
-function NewSongForm() {
+function NewSongForm({ initialQuery }: { initialQuery: string }) {
   const router = useRouter();
   const defaultLevel = useStore((s) => s.settings.defaultLevel);
   const [title, setTitle] = useState("");
@@ -86,6 +88,7 @@ function NewSongForm() {
       <Headline className="text-[28px]" first="어떤 노래로" second="공부해 볼까요?" />
 
       <SongSearch
+        initialQuery={initialQuery}
         picked={picked}
         onPick={(hit) => {
           setPicked(hit);
@@ -232,15 +235,17 @@ function Field({
 
 /** 제목·가수로 노래를 찾아 고른다. 고르면 제목·가수·앨범 커버가 채워진다. */
 function SongSearch({
+  initialQuery,
   picked,
   onPick,
   onClear,
 }: {
+  initialQuery: string;
   picked: SongHit | null;
   onPick: (hit: SongHit) => void;
   onClear: () => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [hits, setHits] = useState<SongHit[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);

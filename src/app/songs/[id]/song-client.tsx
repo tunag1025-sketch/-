@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
@@ -27,17 +27,28 @@ import type { Song } from "@/lib/types";
 import { LineExplain } from "./line-explain";
 
 type Tab = "lyrics" | "vocab" | "grammar";
+const TABS: Tab[] = ["lyrics", "vocab", "grammar"];
+
+/** 주소로 여는 처음 상태: ?tab=vocab, ?word=단어(단어 카드), ?line=줄 번호(줄 해설) */
+type Opening = { tab?: Tab; word?: string; line?: number };
 
 export function SongClient() {
   const { id } = useParams<{ id: string }>();
+  const params = useSearchParams();
+  const line = params.get("line");
+  const opening: Opening = {
+    tab: TABS.find((t) => t === params.get("tab")),
+    word: params.get("word") ?? undefined,
+    line: line !== null && Number.isInteger(Number(line)) ? Number(line) : undefined,
+  };
   return (
     <HydrationGate>
-      <SongScreen id={id} />
+      <SongScreen id={id} opening={opening} />
     </HydrationGate>
   );
 }
 
-function SongScreen({ id }: { id: string }) {
+function SongScreen({ id, opening }: { id: string; opening: Opening }) {
   const song = useStore((s) => s.songs[id]);
   if (!song) {
     return (
@@ -51,18 +62,20 @@ function SongScreen({ id }: { id: string }) {
       </div>
     );
   }
-  return <SongView song={song} />;
+  return <SongView song={song} opening={opening} />;
 }
 
-function SongView({ song }: { song: Song }) {
+function SongView({ song, opening }: { song: Song; opening: Opening }) {
   const router = useRouter();
   const furigana = useStore((s) => s.settings.furigana);
   const setSettings = useStore((s) => s.setSettings);
   const removeSong = useStore((s) => s.removeSong);
   const cards = useStore((s) => s.cards);
-  const [tab, setTab] = useState<Tab>("lyrics");
-  const [openWord, setOpenWord] = useState<string | null>(null);
-  const [openLine, setOpenLine] = useState<number | null>(null);
+  const [tab, setTab] = useState<Tab>(opening.tab ?? "lyrics");
+  const [openWord, setOpenWord] = useState<string | null>(
+    () => song.vocab.find((v) => v.word === opening.word)?.id ?? null,
+  );
+  const [openLine, setOpenLine] = useState<number | null>(opening.line ?? null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const word = openWord ? song.vocab.find((v) => v.id === openWord) : undefined;

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { PREVIEW, resetPreviewData } from "./preview";
 import { pickData, useStore } from "./store";
 import {
   allRefs,
@@ -186,6 +187,8 @@ export async function flush(): Promise<boolean> {
 /** 로그아웃한 뒤 이 기기의 학습 데이터를 지운다 (다음 사람이 이어 쓰지 않게). */
 export function clearLocalData() {
   stopSync();
+  // 미리보기에서는 샘플 데이터만 지운다.
+  if (PREVIEW) return resetPreviewData();
   try {
     localStorage.removeItem(META_KEY);
     localStorage.removeItem("utango-v1");
