@@ -63,6 +63,21 @@ export function gradeShort(grade: number): string {
   return "상용 외";
 }
 
+/** 한자 표 전체 (한자 카드). 받아 오는 동안은 null, 못 받으면 빈 표. */
+export function useKanjiTable(): ((char: string) => KanjiInfo) | null {
+  const [lookup, setLookup] = useState<((char: string) => KanjiInfo) | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadTable()
+      .then((t) => alive && setLookup(() => (c: string) => toInfo(c, t[c])))
+      .catch(() => alive && setLookup(() => (c: string) => toInfo(c, undefined)));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return lookup;
+}
+
 /** 단어 속 한자들의 정보. 처음 한 번 표를 받아 오는 동안은 null. */
 export function useKanji(word: string): KanjiInfo[] | null {
   const chars = kanjiIn(word);

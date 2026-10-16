@@ -1,4 +1,4 @@
-import { cardKey } from "./cards";
+import { cardKey, uniqueVocab } from "./cards";
 import { isDue } from "./srs";
 import { dayKey } from "./stats";
 import type { CardState, Song, VocabItem } from "./types";
@@ -54,6 +54,27 @@ export function buildQueue(
   const newTaken = fresh.slice(0, opts.newLimit);
   return { queue: [...due, ...newTaken], dueCount: due.length, newCount: newTaken.length, freshTotal: fresh.length };
 }
+
+/** '다시'를 이만큼 이상 고른 단어를 자주 틀린 단어로 본다. */
+export const WEAK_LAPSES = 2;
+/** 자주 틀린 단어를 한 번에 이만큼까지 */
+export const WEAK_LIMIT = 20;
+
+/** 자주 틀린 단어: 아직 장기기억이 아니고 '다시'를 여러 번 고른 단어 (많이 틀린 순). 기한과 상관없이 다시 본다. */
+export function weakWords(songs: Record<string, Song>, order: string[], cards: Record<string, CardState>): VocabItem[] {
+  const lapses = (v: VocabItem) => cards[cardKey(v)]?.lapses ?? 0;
+  return uniqueVocab(songs, order)
+    .filter((v) => {
+      const card = cards[cardKey(v)];
+      return !!card && !card.learned && card.lapses >= WEAK_LAPSES;
+    })
+    .sort((a, b) => lapses(b) - lapses(a) || cards[cardKey(a)].due - cards[cardKey(b)].due);
+}
+
+/** 문법·한자·자주 틀린 단어 학습 주소 */
+export const grammarHref = (songId?: string) => `/review?kind=grammar${songId ? `&song=${songId}` : ""}`;
+export const KANJI_HREF = "/review?kind=kanji";
+export const WEAK_HREF = "/review?kind=weak";
 
 /** 학습 화면 주소. extra만큼 오늘 새 단어를 더 배운다. */
 export function reviewHref(songId?: string, extra = 0): string {

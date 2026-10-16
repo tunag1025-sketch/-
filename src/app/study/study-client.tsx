@@ -14,9 +14,19 @@ import {
   DAILY_NEW_MIN,
   DAILY_NEW_OPTIONS,
   EXTRA_NEW,
+  grammarHref,
+  KANJI_HREF,
   remainingNew,
   reviewHref,
+  WEAK_HREF,
+  WEAK_LAPSES,
+  WEAK_LIMIT,
+  weakWords,
 } from "@/lib/review";
+import { buildDeck, kanjiKey } from "@/lib/cards";
+import { GRAMMAR_NEW_PER_SESSION, uniqueGrammar } from "@/lib/grammar";
+import { useKanjiTable } from "@/lib/kanji";
+import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
 import { QUIZ_TYPES } from "@/lib/quiz";
 import { dayKey } from "@/lib/stats";
 import { useStore } from "@/lib/store";
@@ -50,9 +60,25 @@ function Study() {
     return { ready, all: count(), bySong: Object.fromEntries(ready.map((id) => [id, count(id)])) };
   }, [songs, order, cards, now, newLimit]);
   const { ready } = plan;
+  // 자주 틀린 단어: 기한과 상관없이 다시 본다
+  const weak = useMemo(() => weakWords(songs, order, cards).slice(0, WEAK_LIMIT), [songs, order, cards]);
+  const weakPlan = { queue: weak, dueCount: weak.length, newCount: 0, freshTotal: 0 };
+  const isWeak = scope === "weak" && weak.length > 0;
   const songId = ready.includes(scope) ? scope : undefined;
-  const current = songId ? plan.bySong[songId] : plan.all;
+  const current = isWeak ? weakPlan : songId ? plan.bySong[songId] : plan.all;
   const total = current.queue.length;
+  const startHref = isWeak ? WEAK_HREF : reviewHref(songId);
+  // 문법·한자 카드: 오늘 볼 수
+  const grammar = useMemo(() => {
+    const keys = uniqueGrammar(songs, order).map((g) => g.key);
+    return { total: keys.length, today: buildDeck(keys, cards, now, GRAMMAR_NEW_PER_SESSION).queue.length };
+  }, [songs, order, cards, now]);
+  const kanjiInfo = useKanjiTable();
+  const kanji = useMemo(() => {
+    if (!kanjiInfo) return null;
+    const keys = kanjiDeck(songs, order, kanjiInfo).map((k) => kanjiKey(k.char));
+    return { total: keys.length, today: buildDeck(keys, cards, now, KANJI_NEW_PER_SESSION).queue.length };
+  }, [kanjiInfo, songs, order, cards, now]);
   const extra = Math.max(0, newToday - dailyNew) + EXTRA_NEW;
 
   return (
@@ -61,7 +87,7 @@ function Study() {
 
       <section className="card p-5" aria-live="polite">
         <p className={`truncate text-[13px] font-semibold text-ink-2 ${songId ? "font-jp" : ""}`}>
-          {songId ? songs[songId].title : "모은 단어 전체"}
+          {isWeak ? "자주 틀린 단어" : songId ? songs[songId].title : "모은 단어 전체"}
         </p>
         <div className="mt-2 flex items-end justify-between gap-3">
           <p className="flex items-baseline gap-1">
@@ -72,7 +98,7 @@ function Study() {
         </div>
         {total > 0 ? (
           <Link
-            href={reviewHref(songId)}
+            href={startHref}
             className="btn-primary press mt-5 flex h-[54px] items-center justify-center text-[16px] font-bold"
           >
             학습 시작
@@ -98,7 +124,7 @@ function Study() {
         <h2 className="mb-3 text-[20px] font-bold">범위</h2>
         <ul className="card divide-y divide-line overflow-hidden" role="radiogroup" aria-label="학습 범위">
           <ScopeRow
-            selected={!songId}
+            selected={!songId && !isWeak}
             onSelect={() => setScope("all")}
             icon={
               <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-surface text-blue ring-1 ring-line">
@@ -109,6 +135,20 @@ function Study() {
             sub={`노래 ${ready.length}곡 · 장기기억 단어는 빼고`}
             count={plan.all.queue.length}
           />
+          {weak.length > 0 && (
+            <ScopeRow
+              selected={isWeak}
+              onSelect={() => setScope("weak")}
+              icon={
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-danger-soft text-danger">
+                  <Icon name="refresh" className="size-[22px]" />
+                </span>
+              }
+              title="자주 틀린 단어"
+              sub={`'다시'를 ${WEAK_LAPSES}번 이상 고른 단어`}
+              count={weak.length}
+            />
+          )}
           {ready.map((id) => (
             <ScopeRow
               key={id}
@@ -121,6 +161,26 @@ function Study() {
               jp
             />
           ))}
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-[20px] font-bold">문법 · 한자</h2>
+        <ul className="card divide-y divide-line overflow-hidden">
+          <DeckRow
+            href={grammarHref()}
+            glyph="文"
+            title="문법 복습"
+            sub={grammar.total ? `노래 속 문형 ${grammar.total}개` : "노래를 추가하면 문형이 모여요"}
+            today={grammar.today}
+          />
+          <DeckRow
+            href={KANJI_HREF}
+            glyph="字"
+            title="한자 카드"
+            sub={kanji ? (kanji.total ? `모은 한자 ${kanji.total}자` : "한자가 든 단어를 모으면 생겨요") : "한자 표를 불러오는 중…"}
+            today={kanji?.today ?? null}
+          />
         </ul>
       </section>
 
@@ -244,6 +304,41 @@ function ScopeRow({
           {selected && <Icon name="check" className="size-3" strokeWidth={3} />}
         </span>
       </button>
+    </li>
+  );
+}
+
+/** 문법·한자 카드로 가는 줄 */
+function DeckRow({
+  href,
+  glyph,
+  title,
+  sub,
+  today,
+}: {
+  href: string;
+  glyph: string;
+  title: string;
+  sub: string;
+  today: number | null;
+}) {
+  return (
+    <li>
+      <Link href={href} className="flex items-center gap-3.5 px-4 py-3 transition-colors active:bg-muted">
+        <span className="font-jp grid size-12 shrink-0 place-items-center rounded-2xl bg-blue-soft text-[22px] font-bold text-blue">
+          {glyph}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[16px] font-bold">{title}</div>
+          <div className="truncate text-[13px] text-ink-3">{sub}</div>
+        </div>
+        {today !== null && (
+          <span className={`shrink-0 text-[13px] font-semibold ${today ? "text-blue" : "text-ink-3"}`}>
+            오늘 <span className="num">{today}</span>
+          </span>
+        )}
+        <Icon name="chevron" className="size-5 shrink-0 text-ink-3" />
+      </Link>
     </li>
   );
 }

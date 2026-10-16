@@ -6,6 +6,7 @@ import { HydrationGate } from "@/components/HydrationGate";
 import { Icon } from "@/components/Icon";
 import { LoginButtons } from "@/components/LoginButtons";
 import { TopBar } from "@/components/PageHeader";
+import { isWordKey } from "@/lib/cards";
 import { makeBackup, parseBackup } from "@/lib/data";
 import { dayKey } from "@/lib/stats";
 import { useAccount } from "@/lib/account";
@@ -270,7 +271,7 @@ function Invites() {
 /** 학습 기록을 파일로 내보내고, 그 파일을 다시 불러와 합친다. */
 function Backup() {
   const songCount = useStore((s) => s.order.length);
-  const cardCount = useStore((s) => Object.keys(s.cards).length);
+  const cardCount = useStore((s) => Object.keys(s.cards).filter(isWordKey).length);
   const input = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 

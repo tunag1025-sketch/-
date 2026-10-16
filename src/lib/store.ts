@@ -19,10 +19,10 @@ type State = UserData & {
   createSong: (song: Pick<Song, "title" | "artist" | "level" | "lines">) => string;
   updateSong: (id: string, patch: Partial<Song>) => void;
   removeSong: (id: string) => void;
-  /** key는 cardKey(단어) */
-  grade: (key: string, grade: Grade) => void;
+  /** key는 cardKey(단어)·grammarKey·kanjiKey. countNew를 끄면 하루 새 단어 몫에 세지 않는다. */
+  grade: (key: string, grade: Grade, opts?: { countNew?: boolean }) => void;
   /** 장기기억으로 옮기거나 다시 학습 목록으로 돌린다. */
-  setLearned: (key: string, learned: boolean) => void;
+  setLearned: (key: string, learned: boolean, opts?: { countNew?: boolean }) => void;
   setExplanation: (key: string, explanation: LineExplanation) => void;
   setSettings: (patch: Partial<Settings>) => void;
   markDemoSeeded: () => void;
@@ -87,11 +87,11 @@ export const useStore = create<State>()(
           };
         }),
 
-      grade: (key, grade) =>
+      grade: (key, grade, { countNew = true } = {}) =>
         set((s) => {
           const now = Date.now();
           const day = dayKey(now);
-          const isNew = !s.cards[key];
+          const isNew = !s.cards[key] && countNew;
           return {
             cards: { ...s.cards, [key]: { ...schedule(s.cards[key] ?? newCard(now), grade, now), updatedAt: now } },
             reviewLog: { ...s.reviewLog, [day]: (s.reviewLog[day] ?? 0) + 1 },
@@ -99,7 +99,7 @@ export const useStore = create<State>()(
           };
         }),
 
-      setLearned: (key, learned) =>
+      setLearned: (key, learned, { countNew = true } = {}) =>
         set((s) => {
           const now = Date.now();
           const card = s.cards[key] ?? newCard(now);
@@ -109,7 +109,7 @@ export const useStore = create<State>()(
             : { ...card, learned: false, learnedAt: undefined, perfect: 0, due: now, updatedAt: now };
           // 처음 보는 단어를 바로 장기기억으로 옮겨도 오늘 배운 새 단어로 센다.
           const day = dayKey(now);
-          const isNew = !s.cards[key];
+          const isNew = !s.cards[key] && countNew;
           return {
             cards: { ...s.cards, [key]: next },
             newLog: isNew ? { ...s.newLog, [day]: (s.newLog[day] ?? 0) + 1 } : s.newLog,

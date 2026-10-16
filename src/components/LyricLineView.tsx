@@ -89,18 +89,35 @@ export function patternRange(pattern: string, text: string): [number, number] | 
   return null;
 }
 
-/** 가사 한 줄을 그리되 [start, end) 글자만 파란 밑줄로 짚는다 (문법 예시). */
+/**
+ * 가사 한 줄을 그리되 [start, end) 글자만 파란 밑줄로 짚는다 (문법 예시).
+ * blank면 그 자리를 흰 빈칸으로 가린다 (문법 빈칸 문제).
+ */
 export function LyricLineRange({
   line,
   range,
   furigana = true,
+  blank = false,
 }: {
   line: LyricLine;
   range: [number, number] | null;
   furigana?: boolean;
+  blank?: boolean;
 }) {
   const mark = "font-bold text-blue underline decoration-2 underline-offset-[5px]";
   const out: React.ReactNode[] = [];
+  let boxed = false;
+  const box = (key: string) => {
+    if (boxed) return null;
+    boxed = true;
+    return (
+      <span
+        key={key}
+        aria-label="빈칸"
+        className="mx-1 inline-block h-[1.3em] w-[3.6em] rounded-lg bg-surface align-[-0.3em] ring-[1.5px] ring-blue ring-inset"
+      />
+    );
+  };
   let at = 0;
   line.tokens.forEach((token, ti) =>
     token.segs.forEach((seg, si) => {
@@ -109,6 +126,19 @@ export function LyricLineRange({
       at = end;
       const key = `${ti}-${si}`;
       const inRange = (a: number, b: number) => !!range && a < range[1] && b > range[0];
+      if (blank && range && inRange(start, end)) {
+        // 빈칸 문제: 범위에 걸친 조각은 앞뒤 글자만 남기고 가운데를 빈칸 하나로
+        const a = Math.max(range[0], start) - start;
+        const b = Math.min(range[1], end) - start;
+        out.push(
+          <span key={key}>
+            {seg.r ? null : seg.t.slice(0, a)}
+            {box(`${key}-box`)}
+            {seg.r ? null : seg.t.slice(b)}
+          </span>,
+        );
+        return;
+      }
       if (seg.r) {
         out.push(
           <ruby key={key} className={inRange(start, end) ? mark : undefined}>

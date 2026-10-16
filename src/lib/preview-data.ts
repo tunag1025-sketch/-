@@ -4,6 +4,7 @@
  */
 import type { AccountUser } from "./account";
 import type { SongHit } from "./artwork";
+import { grammarKey, kanjiKey } from "./cards";
 import { DEFAULT_SETTINGS, explanationKey, type UserData } from "./data";
 import demoSong from "./demo-song.json";
 import previewSongs from "./preview-songs.json";
@@ -38,6 +39,13 @@ const SHORT: [word: string, interval: number][] = [
   ["夢", 1],
 ];
 const DUE = ["君", "眠る", "約束", "信じる", "弾く"];
+// 자주 틀린 단어 ('다시'를 고른 횟수)
+const LAPSES: Record<string, number> = { 眠る: 3, 信じる: 2, 離れる: 2 };
+// 문법·한자 카드 (나머지는 학습 전)
+const GRAMMAR_LONG = ["〜ても"];
+const GRAMMAR_DUE = ["〜ていく", "〜て"];
+const KANJI_LONG = ["夜", "星", "空"];
+const KANJI_DUE = ["君", "雨"];
 
 // 최근 2주 동안 날마다 답한 수 (오늘부터 거꾸로). 0인 날에서 연속 기록이 끊긴다.
 const REVIEWS = [8, 15, 22, 9, 18, 0, 12, 6, 14, 0, 10, 7, 0, 5];
@@ -71,6 +79,11 @@ export function makePreviewState(now: number): UserData & { seededDemo: boolean;
   for (const word of LONG) cards[word] = longCard(now);
   for (const [word, interval] of SHORT) cards[word] = shortCard(now, interval, now + interval * DAY);
   DUE.forEach((word, i) => (cards[word] = shortCard(now, 1, now - (DUE.length - i) * HOUR)));
+  for (const [word, lapses] of Object.entries(LAPSES)) cards[word] = { ...cards[word], lapses };
+  for (const p of GRAMMAR_LONG) cards[grammarKey(p)] = longCard(now);
+  GRAMMAR_DUE.forEach((p, i) => (cards[grammarKey(p)] = shortCard(now, 1, now - (i + 1) * HOUR)));
+  for (const c of KANJI_LONG) cards[kanjiKey(c)] = longCard(now);
+  KANJI_DUE.forEach((c, i) => (cards[kanjiKey(c)] = shortCard(now, 1, now - (i + 1) * HOUR)));
 
   const reviewLog: Record<string, number> = {};
   REVIEWS.forEach((n, i) => n && (reviewLog[dayKey(now - i * DAY)] = n));

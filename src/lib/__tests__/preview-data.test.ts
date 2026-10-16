@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { cardKey, uniqueVocab } from "../cards";
+import { cardKey, isWordKey, kanjiKey, uniqueVocab } from "../cards";
+import { uniqueGrammar } from "../grammar";
+import { kanjiIn } from "../kanji";
 import { makePreviewState, previewApi } from "../preview-data";
 import { buildQueue, remainingNew } from "../review";
 import { progressOf } from "../srs";
@@ -16,9 +18,13 @@ describe("preview sample data", () => {
     expect([...created].sort((a, b) => b - a)).toEqual(created);
   });
 
-  it("only keeps cards for words that appear in the songs", () => {
+  it("only keeps cards for words, patterns and kanji that appear in the songs", () => {
     const words = new Set(uniqueVocab(state.songs, state.order).map(cardKey));
-    for (const key of Object.keys(state.cards)) expect(words.has(key), key).toBe(true);
+    const grammar = new Set(uniqueGrammar(state.songs, state.order).map((g) => g.key));
+    const kanji = new Set(uniqueVocab(state.songs, state.order).flatMap((v) => kanjiIn(v.word).map(kanjiKey)));
+    for (const key of Object.keys(state.cards)) {
+      expect(isWordKey(key) ? words.has(key) : grammar.has(key) || kanji.has(key), key).toBe(true);
+    }
   });
 
   it("explains lines that exist and points vocab at real lines", () => {

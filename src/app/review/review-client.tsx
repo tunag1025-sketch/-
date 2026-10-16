@@ -1,33 +1,26 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
-import { Icon, IconCircle } from "@/components/Icon";
+import { Icon } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
-import { CircleLink, Headline } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
 import { SpeakButton } from "@/components/SpeakButton";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
 import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
 import { speak } from "@/lib/speech";
-import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
+import { buildQueue, EXTRA_NEW, remainingNew, reviewHref, WEAK_LIMIT, weakWords } from "@/lib/review";
 import { PREVIEW } from "@/lib/preview";
 import { blankAnswer, canAsk, makeChoices, pickQuizType, QUIZ_TYPES, type QuizType, readingMatches } from "@/lib/quiz";
-import { graduates, intervalLabel, memoryOf, newCard } from "@/lib/srs";
-import { streak } from "@/lib/stats";
+import { memoryOf, newCard } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Grade, Song, VocabItem } from "@/lib/types";
 import { useLineExplanation } from "@/lib/use-line-explanation";
-
-// 답마다 색을 달리한다: 다시(빨강) · 이해(파랑) · 완벽(보라)
-const GRADES: { grade: Grade; label: string; tone: string }[] = [
-  { grade: "again", label: "다시", tone: "bg-danger-soft text-danger" },
-  { grade: "good", label: "이해", tone: "bg-blue-soft text-blue" },
-  { grade: "perfect", label: "완벽", tone: "bg-violet-soft text-violet" },
-];
+import { GrammarSession } from "./grammar-session";
+import { KanjiSession } from "./kanji-session";
+import { BottomBar, Finished, GradeSheet, SessionHeader, Toast, useStudySession, WrongSheet } from "./parts";
 
 /**
  * 화면 미리보기에서 주소로 고르는 상태: 첫 문제 유형(quiz), 답을 본 상태(reveal=1 맞힘 / wrong 틀림),
@@ -46,26 +39,50 @@ export function ReviewClient() {
   const params = useSearchParams();
   const songId = params.get("song") ?? undefined;
   const extra = Math.max(0, Number(params.get("extra")) || 0);
+  const kind = params.get("kind");
   const look = previewLook(params);
   return (
     <HydrationGate>
-      <ReviewSession key={`${songId}:${extra}`} songId={songId} extra={extra} look={look} />
+      {kind === "grammar" ? (
+        <GrammarSession key={`g:${songId}`} songId={songId} />
+      ) : kind === "kanji" ? (
+        <KanjiSession />
+      ) : (
+        <ReviewSession
+          key={`${kind}:${songId}:${extra}`}
+          songId={songId}
+          extra={extra}
+          weak={kind === "weak"}
+          look={look}
+        />
+      )}
     </HydrationGate>
   );
 }
 
-function ReviewSession({ songId, extra, look }: { songId?: string; extra: number; look?: Look }) {
+function ReviewSession({
+  songId,
+  extra,
+  weak,
+  look,
+}: {
+  songId?: string;
+  extra: number;
+  /** 자주 틀린 단어만 */
+  weak: boolean;
+  look?: Look;
+}) {
   const songs = useStore((s) => s.songs);
   const order = useStore((s) => s.order);
-  const grade = useStore((s) => s.grade);
   // 보기(오답)로 쓸 단어: 모은 단어 전체
   const pool = useMemo(() => uniqueVocab(songs, order), [songs, order]);
 
   // 시작할 때의 목록을 고정한다. "다시"를 누른 카드는 뒤에 다시 붙인다.
   // 처음 배우는 단어는 '학습', 다시 보는 단어는 '복습'으로 보여 준다.
-  const [{ initial, fresh }] = useState(() => {
+  const [initial] = useState(() => {
     const { songs, order, cards, newLog, settings } = useStore.getState();
     const now = Date.now();
+    if (weak) return weakWords(songs, order, cards).slice(0, WEAK_LIMIT).map((v) => v.id);
     const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
     const { queue } = buildQueue(songs, order, cards, now, { songId, newLimit });
     if (look?.quiz) {
@@ -75,58 +92,45 @@ function ReviewSession({ songId, extra, look }: { songId?: string; extra: number
       const first = queue.find((v) => fits(v) && cardOf(cards, v)) ?? queue.find(fits);
       if (first) queue.splice(0, queue.length, first, ...queue.filter((v) => v !== first));
     }
-    return { initial: queue.map((v) => v.id), fresh: new Set(queue.filter((v) => !cardOf(cards, v)).map((v) => v.id)) };
+    return queue.map((v) => v.id);
   });
-  const [queue, setQueue] = useState(initial);
-  const [pos, setPos] = useState(0);
-  const [doneCount, setDoneCount] = useState(0);
-  const [learnedCount, setLearnedCount] = useState(0);
-  const [shortCount, setShortCount] = useState(0);
-  const [toast, setToast] = useState<{ n: number; text: string } | null>(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2200);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  const currentId = queue[pos];
   const findItem = (id: string | undefined) => {
     const song = id ? songs[id.split(":")[0]] : undefined;
     const item = song?.vocab.find((v) => v.id === id);
     return song && item ? { song, item } : undefined;
   };
-  const current = findItem(currentId);
-  const next = findItem(queue[pos + 1]);
+  const session = useStudySession({
+    initial,
+    keyOf: (id) => cardKey(findItem(id)?.item ?? { word: id }),
+    nameOf: (id) => findItem(id)?.item.word ?? "",
+  });
+  const { queue, pos, stats } = session;
+  const current = findItem(session.current);
+  const next = findItem(session.next);
   const exitHref = songId ? `/songs/${songId}` : "/";
-
-  function advance(done: boolean, learned: boolean) {
-    if (done) setDoneCount((n) => n + 1);
-    if (learned) {
-      setLearnedCount((n) => n + 1);
-      setToast((t) => ({ n: (t?.n ?? 0) + 1, text: `${current!.item.word} · 장기기억으로 옮겼어요` }));
-      // "다시"로 뒤에 붙여 둔 같은 카드도 뺀다.
-      setQueue((q) => q.filter((id, i) => i <= pos || id !== currentId));
-    }
-    setPos((p) => p + 1);
-    window.scrollTo({ top: 0 });
-  }
-
-  function answer(g: Grade) {
-    const key = cardKey(current!.item);
-    const before = memoryOf(useStore.getState().cards[key]);
-    grade(key, g);
-    const after = memoryOf(useStore.getState().cards[key]);
-    const wasLearned = before === "long";
-    const nowLearned = after === "long";
-    if (before === "none" && after === "short") setShortCount((n) => n + 1);
-    if (g === "again") setQueue((q) => [...q, currentId]);
-    advance(g !== "again", nowLearned && !wasLearned);
-  }
+  // 오늘 몫을 다 배웠어도 아직 안 배운 단어가 남았으면 더 학습할 수 있게 한다.
+  const finished = !current;
+  const [now] = useState(Date.now);
+  const more = useMemo(() => {
+    if (!finished || weak) return null;
+    const { songs, order, cards } = useStore.getState();
+    const left = buildQueue(songs, order, cards, now, { songId, newLimit: 0 }).freshTotal;
+    return left > 0 ? { href: reviewHref(songId, extra + EXTRA_NEW), label: `새 단어 ${Math.min(EXTRA_NEW, left)}개 더` } : null;
+  }, [finished, weak, songId, extra, now]);
+  const dailyNew = useStore((s) => s.settings.dailyNew);
 
   if (look?.done) {
     return (
-      <Finished total={19} learned={1} short={6} extra={extra} empty={false} studiedNew exitHref={exitHref} />
+      <Finished
+        total={19}
+        learned={1}
+        short={6}
+        studiedNew
+        empty={false}
+        emptyText=""
+        exitHref={exitHref}
+        more={{ href: reviewHref(undefined, EXTRA_NEW), label: `새 단어 ${EXTRA_NEW}개 더` }}
+      />
     );
   }
 
@@ -134,7 +138,7 @@ function ReviewSession({ songId, extra, look }: { songId?: string; extra: number
     <>
       {current ? (
         <ReviewCard
-          key={`${currentId}:${pos}`}
+          key={`${session.current}:${pos}`}
           song={current.song}
           item={current.item}
           pool={pool}
@@ -142,35 +146,31 @@ function ReviewSession({ songId, extra, look }: { songId?: string; extra: number
           next={next}
           pos={pos}
           total={queue.length}
-          isNew={fresh.has(currentId)}
+          isNew={session.fresh.has(session.current)}
           exitHref={exitHref}
-          onAnswer={answer}
-          onLearned={() => advance(true, true)}
+          onAnswer={session.answer}
+          onLearned={session.markedLearned}
         />
       ) : (
         <Finished
-          total={doneCount}
-          learned={learnedCount}
-          short={shortCount}
-          songTitle={songId ? songs[songId]?.title : undefined}
-          songId={songId}
-          extra={extra}
+          total={stats.done}
+          learned={stats.learned}
+          short={stats.short}
+          songTitle={songId ? songs[songId]?.title : weak ? "자주 틀린 단어" : undefined}
           empty={queue.length === 0}
-          studiedNew={fresh.size > 0}
-          exitHref={exitHref}
+          emptyText={
+            weak
+              ? "자주 틀린 단어가 없어요. 잘하고 있어요!"
+              : more
+                ? `오늘 배울 새 단어 ${dailyNew}개를 다 배웠어요.`
+                : "노래를 추가하거나 다시 볼 때가 되면 단어가 생겨요."
+          }
+          studiedNew={session.fresh.size > 0}
+          exitHref={weak ? "/study" : exitHref}
+          more={more}
         />
       )}
-      {toast && (
-        <div className="pt-safe pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4" role="status">
-          <p
-            key={toast.n}
-            className="font-jp mt-3 flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-[14px] font-semibold text-bg shadow-lg"
-          >
-            <Icon name="check" className="size-4" />
-            {toast.text}
-          </p>
-        </div>
-      )}
+      <Toast toast={session.toast} />
     </>
   );
 }
@@ -273,21 +273,7 @@ function ReviewCard({
 
   return (
     <div className={revealed ? "pb-60" : "pb-28"}>
-      <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div>
-          <CircleLink href={exitHref} icon="close" label="학습 그만하기" />
-        </div>
-        <span className="text-[16px] font-semibold">{isNew ? "새 단어 학습" : "복습"}</span>
-        <span className="num text-right text-[14px] font-semibold text-ink-3">
-          {pos + 1}/{total}
-        </span>
-      </header>
-      <div className="h-1 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-[image:var(--grad-text)] transition-all"
-          style={{ width: `${(pos / total) * 100}%` }}
-        />
-      </div>
+      <SessionHeader exitHref={exitHref} title={isNew ? "새 단어 학습" : "복습"} pos={pos} total={total} />
 
       <article className={`card mt-5 rounded-[28px] p-5 ${revealed ? "" : "pb-9"}`}>
         <p className="font-jp flex items-center gap-1.5 truncate text-[13px] font-medium text-ink-3">
@@ -468,173 +454,37 @@ function ReviewCard({
         </div>
       )}
 
-      <div className="pb-safe fixed inset-x-0 bottom-0 z-30">
-        <div className={`mx-auto max-w-xl pb-[22px] ${revealed ? "px-3" : "px-5"}`}>
-          {wrong ? (
-            <div className="rounded-[30px] border border-line bg-surface px-3.5 pt-4 pb-3.5 shadow-[0_-8px_30px_rgb(31_59_120/0.10)]">
-              <p className="text-center text-[14px] text-ink-3">틀린 단어는 잠시 뒤에 다시 나와요.</p>
-              <button
-                type="button"
-                onClick={() => onAnswer("again")}
-                className="btn-primary press mt-3 flex h-[54px] w-full items-center justify-center text-[16px] font-bold"
-              >
-                다음
-              </button>
-            </div>
-          ) : revealed ? (
-            <div className="rounded-[30px] border border-line bg-surface px-3.5 pt-4 pb-3.5 shadow-[0_-8px_30px_rgb(31_59_120/0.10)]">
-              <p className="text-center text-[15px] font-bold">이 단어, 어땠어요?</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {GRADES.map((g) => (
-                  <button
-                    key={g.grade}
-                    type="button"
-                    onClick={() => onAnswer(g.grade)}
-                    className={`press flex h-[60px] flex-col items-center justify-center gap-px rounded-[18px] ${g.tone}`}
-                  >
-                    <span className="text-[16px] font-bold">{g.label}</span>
-                    <span className="num text-[12px] font-medium">
-                      {graduates(state, g.grade, now) ? "장기기억으로" : intervalLabel(state, g.grade, now)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : quiz.type === "recall" ? (
-            <button
-              type="button"
-              onClick={() => {
-                setFlipped(true);
-                sayWord();
-              }}
-              className="btn-primary press flex h-14 w-full items-center justify-center text-[16px] font-bold"
-            >
-              뜻 보기
-            </button>
-          ) : quiz.type !== "reading" ? null : (
-            <button
-              type="button"
-              onClick={() => {
-                setPicked("");
-                sayWord();
-              }}
-              className="press flex h-[52px] w-full items-center justify-center rounded-full border border-line bg-surface text-[15px] font-semibold text-ink-2"
-            >
-              모르겠어요
-            </button>
-          )}
-        </div>
-      </div>
+      {wrong ? (
+        <WrongSheet onNext={() => onAnswer("again")} />
+      ) : revealed ? (
+        <GradeSheet state={state} now={now} onAnswer={onAnswer} />
+      ) : quiz.type === "recall" ? (
+        <BottomBar>
+          <button
+            type="button"
+            onClick={() => {
+              setFlipped(true);
+              sayWord();
+            }}
+            className="btn-primary press flex h-14 w-full items-center justify-center text-[16px] font-bold"
+          >
+            뜻 보기
+          </button>
+        </BottomBar>
+      ) : quiz.type === "reading" ? (
+        <BottomBar>
+          <button
+            type="button"
+            onClick={() => {
+              setPicked("");
+              sayWord();
+            }}
+            className="press flex h-[52px] w-full items-center justify-center rounded-full border border-line bg-surface text-[15px] font-semibold text-ink-2"
+          >
+            모르겠어요
+          </button>
+        </BottomBar>
+      ) : null}
     </div>
   );
 }
-
-function Finished({
-  total,
-  learned,
-  short,
-  songTitle,
-  songId,
-  extra,
-  empty,
-  studiedNew,
-  exitHref,
-}: {
-  total: number;
-  learned: number;
-  short: number;
-  /** 새 단어가 있었으면 '학습', 다시 보는 단어만 있었으면 '복습' */
-  studiedNew: boolean;
-  songTitle?: string;
-  songId?: string;
-  extra: number;
-  empty: boolean;
-  exitHref: string;
-}) {
-  const reviewLog = useStore((s) => s.reviewLog);
-  const dailyNew = useStore((s) => s.settings.dailyNew);
-  const [now] = useState(Date.now);
-  const days = streak(reviewLog, now);
-  // 오늘 몫을 다 배웠어도 아직 안 배운 단어가 남았으면 더 학습할 수 있게 한다.
-  const [freshLeft] = useState(() => {
-    const { songs, order, cards } = useStore.getState();
-    return buildQueue(songs, order, cards, now, { songId, newLimit: 0 }).freshTotal;
-  });
-  const more = Math.min(EXTRA_NEW, freshLeft);
-  const exitLabel = exitHref === "/" ? "홈으로" : "노래로";
-
-  return (
-    <div className="flex flex-col items-center pt-[72px] pb-32 text-center">
-      {empty ? (
-        <IconCircle name="cards" className="size-[76px]" />
-      ) : (
-        <span className="grid size-[76px] place-items-center rounded-full bg-btn text-white">
-          <Icon name="check" className="size-9" strokeWidth={2.5} />
-        </span>
-      )}
-      <Headline
-        className="mt-6 text-[30px]"
-        first={empty ? "지금은" : studiedNew ? "오늘 학습" : "오늘 복습"}
-        second={empty ? "쉬어도 돼요" : "완료했어요!"}
-      />
-      <p className="mt-2.5 text-[15px] text-ink-3">
-        {empty
-          ? freshLeft > 0
-            ? `오늘 배울 새 단어 ${dailyNew}개를 다 배웠어요.`
-            : "노래를 추가하거나 다시 볼 때가 되면 단어가 생겨요."
-          : songTitle
-            ? `'${songTitle}' 단어를 모두 ${studiedNew ? "학습" : "복습"}했어요.`
-            : `오늘 몫의 단어를 모두 ${studiedNew ? "학습" : "복습"}했어요.`}
-      </p>
-      {!empty && (
-        <div className="card mt-8 w-full p-5">
-          <p className="flex items-baseline justify-center gap-1">
-            <span className="num text-[56px] leading-none font-medium tracking-[-0.04em]">{total}</span>
-            <span className="text-[16px] font-bold text-ink-2">개 {studiedNew ? "학습" : "복습"}</span>
-          </p>
-          <div className="mt-[18px] grid grid-cols-3 divide-x divide-line border-t border-line pt-4">
-            {(
-              [
-                [short, "새 단기기억", ""],
-                [learned, "새 장기기억", ""],
-                [days, "일 연속", "text-pink"],
-              ] as const
-            ).map(([n, label, tone]) => (
-              <div key={label}>
-                <p className={`num text-[24px] leading-none font-medium ${tone}`}>{n}</p>
-                <p className="mt-1.5 text-[13px] text-ink-3">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="pb-safe fixed inset-x-0 bottom-0 z-30">
-        <div className="mx-auto grid max-w-xl grid-cols-[1fr_1.4fr] gap-2.5 px-5 pb-[30px]">
-          {more > 0 ? (
-            <>
-              <Link href={exitHref} className={GHOST}>
-                {exitLabel}
-              </Link>
-              <Link href={reviewHref(songId, extra + EXTRA_NEW)} replace className={PRIMARY}>
-                새 단어 {more}개 더
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/vocab" className={GHOST}>
-                단어장 보기
-              </Link>
-              <Link href={empty ? "/songs/new" : exitHref} className={PRIMARY}>
-                {empty ? "노래 추가하기" : exitLabel}
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const GHOST =
-  "press grid h-[54px] place-items-center rounded-full border border-line bg-surface text-[15px] font-semibold text-ink-2";
-const PRIMARY = "btn-primary press grid h-[54px] place-items-center text-[15px] font-bold";

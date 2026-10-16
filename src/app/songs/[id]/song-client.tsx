@@ -16,10 +16,11 @@ import { MemoryMarkLegend, VocabRow } from "@/components/VocabRow";
 import { useAccount } from "@/lib/account";
 import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-client";
 import type { Artwork } from "@/lib/artwork";
-import { cardOf } from "@/lib/cards";
+import { buildDeck, cardOf } from "@/lib/cards";
 import { fileToCover } from "@/lib/image";
 import { isKoreanOnly } from "@/lib/lyrics";
-import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
+import { buildQueue, grammarHref, remainingNew, reviewHref } from "@/lib/review";
+import { GRAMMAR_NEW_PER_SESSION, uniqueGrammar } from "@/lib/grammar";
 import { isDue, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song } from "@/lib/types";
@@ -101,6 +102,16 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
       buildQueue(songs, order, cards, now, { songId: song.id, newLimit: remainingNew(dailyNew, newLog, now) }).queue
         .length,
     [songs, order, cards, now, song.id, dailyNew, newLog],
+  );
+  const grammarToday = useMemo(
+    () =>
+      buildDeck(
+        uniqueGrammar(songs, order, song.id).map((g) => g.key),
+        cards,
+        now,
+        GRAMMAR_NEW_PER_SESSION,
+      ).queue.length,
+    [songs, order, song.id, cards, now],
   );
 
   return (
@@ -285,6 +296,19 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
         </>
       )}
 
+      {tab === "grammar" && song.grammar.length > 0 && (
+        <Link
+          href={grammarHref(song.id)}
+          className="btn-primary press mb-3 flex h-[52px] items-center justify-center gap-2 text-[15px] font-bold"
+        >
+          이 노래 문법 복습하기
+          {grammarToday > 0 && (
+            <span className="num inline-flex h-6 items-center rounded-full bg-white/22 px-[9px] text-[13px] font-semibold">
+              오늘 {grammarToday}
+            </span>
+          )}
+        </Link>
+      )}
       {tab === "grammar" && (
         <ul className="space-y-2.5">
           {song.grammar.length === 0 && (

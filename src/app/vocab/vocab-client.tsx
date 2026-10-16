@@ -9,37 +9,109 @@ import { Headline } from "@/components/PageHeader";
 import { Sheet } from "@/components/Sheet";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
-import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
+import { buildDeck, cardKey, cardOf, kanjiKey, uniqueVocab } from "@/lib/cards";
+import { GRAMMAR_NEW_PER_SESSION, uniqueGrammar } from "@/lib/grammar";
+import { useKanjiTable } from "@/lib/kanji";
+import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
 import { kataToHira } from "@/lib/furigana";
-import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
-import { isDue, type Memory, memoryOf, progressOf } from "@/lib/srs";
+import { buildQueue, grammarHref, KANJI_HREF, remainingNew, reviewHref } from "@/lib/review";
+import { isDue, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { VocabItem } from "@/lib/types";
+import { GrammarList, KanjiList, SearchBox, SongChips, type Status, StatusTabs } from "./notebook";
+
+type View = "word" | "grammar" | "kanji";
+const VIEWS: [View, string][] = [
+  ["word", "단어"],
+  ["grammar", "문법"],
+  ["kanji", "한자"],
+];
 
 export function VocabClient() {
-  // ?word= 로 열면 그 단어 카드를 펼쳐 둔다
-  const word = useSearchParams().get("word") ?? undefined;
+  const params = useSearchParams();
+  // ?word= 로 열면 그 단어 카드를 펼쳐 두고, ?view=grammar|kanji 면 그 목록으로 연다
+  const word = params.get("word") ?? undefined;
+  const view = VIEWS.find(([v]) => v === params.get("view"))?.[0] ?? "word";
   return (
     <HydrationGate>
-      <VocabList openWord={word} />
+      <VocabBook openWord={word} initialView={view} />
     </HydrationGate>
   );
 }
 
-type Status = "all" | Memory;
-const STATUSES: [Status, string][] = [
-  ["all", "전체"],
-  ["none", "학습 전"],
-  ["short", "단기기억"],
-  ["long", "장기기억"],
-];
-
-function VocabList({ openWord }: { openWord?: string }) {
+/** 단어장: 단어 · 문법 · 한자를 바꿔 가며 본다. 오른쪽 위 학습 버튼은 지금 보는 것을 학습한다. */
+function VocabBook({ openWord, initialView }: { openWord?: string; initialView: View }) {
   const songs = useStore((s) => s.songs);
   const order = useStore((s) => s.order);
   const cards = useStore((s) => s.cards);
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
+  const [view, setView] = useState<View>(initialView);
+  const [now] = useState(Date.now);
+  const kanjiInfo = useKanjiTable();
+  const words = useMemo(() => uniqueVocab(songs, order), [songs, order]);
+  const grammar = useMemo(() => uniqueGrammar(songs, order).map((g) => g.key), [songs, order]);
+  const kanji = useMemo(
+    () => (kanjiInfo ? kanjiDeck(songs, order, kanjiInfo).map((k) => kanjiKey(k.char)) : null),
+    [kanjiInfo, songs, order],
+  );
+  const today = useMemo(
+    () => ({
+      word: buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }).queue.length,
+      grammar: buildDeck(grammar, cards, now, GRAMMAR_NEW_PER_SESSION).queue.length,
+      kanji: kanji ? buildDeck(kanji, cards, now, KANJI_NEW_PER_SESSION).queue.length : 0,
+    }),
+    [songs, order, cards, now, dailyNew, newLog, grammar, kanji],
+  );
+  const sizes: Record<View, number | null> = { word: words.length, grammar: grammar.length, kanji: kanji?.length ?? null };
+  const href = { word: reviewHref(), grammar: grammarHref(), kanji: KANJI_HREF }[view];
+  const n = today[view];
+
+  return (
+    <div className="space-y-5 pt-5">
+      <div className="flex items-end justify-between gap-3">
+        <Headline className="text-[30px]" first="노래에서 모은" second="나의 단어장" />
+        {(sizes[view] ?? 0) > 0 && (
+          // 오늘 할 게 있으면 바로 학습, 없으면 학습 설정으로
+          <Link
+            href={n ? href : "/study"}
+            aria-label={n ? `${VIEWS.find(([v]) => v === view)![1]} 학습하기, 오늘 ${n}개` : "학습 설정"}
+            className={`press mb-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-bold ${
+              n ? "btn-primary" : "btn-ghost"
+            }`}
+          >
+            <Icon name="cards" className="size-[17px]" />
+            학습
+            {n > 0 && <span className="num">{n}</span>}
+          </Link>
+        )}
+      </div>
+
+      <div className="seg" role="tablist" aria-label="단어장 보기">
+        {VIEWS.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={view === key}
+            onClick={() => setView(key)}
+            className="seg-item press"
+          >
+            {label}
+            {sizes[key] !== null && <span className="num text-[13px] font-medium text-ink-3">{sizes[key]}</span>}
+          </button>
+        ))}
+      </div>
+
+      {view === "word" ? <WordList openWord={openWord} /> : view === "grammar" ? <GrammarList /> : <KanjiList info={kanjiInfo} />}
+    </div>
+  );
+}
+
+function WordList({ openWord }: { openWord?: string }) {
+  const songs = useStore((s) => s.songs);
+  const order = useStore((s) => s.order);
+  const cards = useStore((s) => s.cards);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>("all");
   const [songFilter, setSongFilter] = useState<string>("all");
@@ -73,10 +145,6 @@ function VocabList({ openWord }: { openWord?: string }) {
   const open = openId ? base.find((v) => v.id === openId) : undefined;
   const songsWithVocab = order.filter((id) => songs[id]?.vocab.length);
   const memory = progressOf(all, cards);
-  const today = useMemo(
-    () => buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }).queue.length,
-    [songs, order, cards, now, dailyNew, newLog],
-  );
   const counts: Record<Status, number> = {
     all: all.length,
     none: all.length - memory.long - memory.short,
@@ -85,70 +153,10 @@ function VocabList({ openWord }: { openWord?: string }) {
   };
 
   return (
-    <div className="space-y-5 pt-5">
-      <div className="flex items-end justify-between gap-3">
-        <Headline className="text-[30px]" first="노래에서 모은" second="나의 단어장" />
-        {all.length > 0 && (
-          // 오늘 할 게 있으면 모은 단어로 바로 학습, 없으면 학습 설정으로
-          <Link
-            href={today ? reviewHref() : "/study"}
-            aria-label={today ? `모은 단어로 학습하기, 오늘 ${today}개` : "학습 설정"}
-            className={`press mb-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-bold ${
-              today ? "btn-primary" : "btn-ghost"
-            }`}
-          >
-            <Icon name="cards" className="size-[17px]" />
-            학습
-            {today > 0 && <span className="num">{today}</span>}
-          </Link>
-        )}
-      </div>
-
-      <div className="seg rounded-[18px]" role="tablist" aria-label="단어 상태">
-        {STATUSES.map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={status === key}
-            onClick={() => setStatus(key)}
-            className="seg-item press flex-col gap-0 rounded-[14px] py-1.5 text-[13px] leading-tight"
-          >
-            {label}
-            <span className="num text-[15px]">{counts[key]}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="relative">
-        <Icon name="search" className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-ink-3" />
-        <label htmlFor="vocab-search" className="sr-only">
-          단어 찾기
-        </label>
-        <input
-          id="vocab-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="단어, 읽는 법, 뜻으로 찾기"
-          className="font-jp input h-12 rounded-full py-0 pl-11"
-        />
-      </div>
-
-      {songsWithVocab.length > 1 && (
-        <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
-          {[["all", "모든 노래"] as const, ...songsWithVocab.map((id) => [id, songs[id].title] as const)].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setSongFilter(id)}
-              aria-pressed={songFilter === id}
-              className={`chip press h-8 shrink-0 ${id === "all" ? "" : "font-jp"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+    <>
+      <StatusTabs status={status} onChange={setStatus} counts={counts} />
+      <SearchBox id="vocab-search" value={query} onChange={setQuery} placeholder="단어, 읽는 법, 뜻으로 찾기" />
+      <SongChips ids={songsWithVocab} songs={songs} value={songFilter} onChange={setSongFilter} />
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center py-12 text-center">
@@ -188,7 +196,7 @@ function VocabList({ openWord }: { openWord?: string }) {
       <Sheet open={!!open} onClose={() => setOpenId(null)} title={open ? songs[open.songId]?.title : undefined} icon="music">
         {open && <VocabDetail item={open} song={songs[open.songId]} />}
       </Sheet>
-    </div>
+    </>
   );
 }
 
