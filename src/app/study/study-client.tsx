@@ -36,6 +36,7 @@ function Study() {
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
   const quizTypes = useStore((s) => s.settings.quizTypes);
+  const autoSpeak = useStore((s) => s.settings.autoSpeak);
   const setSettings = useStore((s) => s.setSettings);
   const [now] = useState(Date.now);
   const [scope, setScope] = useState<string>("all");
@@ -139,6 +140,31 @@ function Study() {
           오늘 새로 배운 단어 <span className="num font-semibold text-ink-2">{newToday}</span>개 · 남은 몫{" "}
           <span className="num font-semibold text-ink-2">{newLimit}</span>개
         </p>
+      </section>
+
+      <section>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={autoSpeak}
+          onClick={() => setSettings({ autoSpeak: !autoSpeak })}
+          className="press flex w-full items-center gap-3 text-left"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-[19px] font-semibold">뜻 볼 때 발음 듣기</span>
+            <span className="mt-1 block text-[14px] text-ink-3">뜻을 보거나 답을 고르면 단어를 읽어 줘요.</span>
+          </span>
+          <span
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${autoSpeak ? "bg-blue" : "bg-ink-3/45"}`}
+            aria-hidden
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-sm transition-transform ${
+                autoSpeak ? "translate-x-5" : ""
+              }`}
+            />
+          </span>
+        </button>
       </section>
 
       <section>

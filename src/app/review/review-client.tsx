@@ -12,6 +12,7 @@ import { SpeakButton } from "@/components/SpeakButton";
 import { Stat } from "@/components/Stat";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
+import { speak } from "@/lib/speech";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
 import { blankAnswer, makeChoices, pickQuizType, type QuizType, readingMatches } from "@/lib/quiz";
 import { graduates, intervalLabel, newCard } from "@/lib/srs";
@@ -185,6 +186,9 @@ function ReviewCard({
   const card = useStore((s) => s.cards[item.id]);
   const furigana = useStore((s) => s.settings.furigana);
   const quizTypes = useStore((s) => s.settings.quizTypes);
+  const autoSpeak = useStore((s) => s.settings.autoSpeak);
+  // 뜻을 볼 때 발음을 들려준다 (iPhone은 누른 순간에 불러야 소리가 난다)
+  const sayWord = () => autoSpeak && speak(item.reading || item.word);
   const [quiz] = useState(() => makeQuiz(item, song, pool, quizTypes));
   const [flipped, setFlipped] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
@@ -318,7 +322,9 @@ function ReviewCard({
             className="mt-6 flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              if (typed.trim()) setPicked(typed.trim());
+              if (!typed.trim()) return;
+              setPicked(typed.trim());
+              sayWord();
             }}
           >
             <label htmlFor="reading-answer" className="sr-only">
@@ -351,7 +357,10 @@ function ReviewCard({
                 key={c}
                 type="button"
                 disabled={picked !== null}
-                onClick={() => setPicked(c)}
+                onClick={() => {
+                  setPicked(c);
+                  sayWord();
+                }}
                 className={`press font-jp rounded-[20px] border px-3 py-4 text-[20px] font-bold transition-colors ${
                   look === "right"
                     ? "border-blue bg-blue-soft text-blue"
@@ -411,7 +420,10 @@ function ReviewCard({
           ) : quiz.type === "recall" ? (
             <button
               type="button"
-              onClick={() => setFlipped(true)}
+              onClick={() => {
+                setFlipped(true);
+                sayWord();
+              }}
               className="btn-primary press flex w-full items-center justify-center py-4 text-[16px] font-semibold"
             >
               뜻 보기
@@ -419,7 +431,10 @@ function ReviewCard({
           ) : quiz.type !== "reading" ? null : (
             <button
               type="button"
-              onClick={() => setPicked("")}
+              onClick={() => {
+                setPicked("");
+                sayWord();
+              }}
               className="btn-ghost press flex w-full items-center justify-center py-3.5 text-[15px] font-semibold"
             >
               모르겠어요

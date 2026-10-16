@@ -8,6 +8,8 @@ export type Settings = {
   dailyNew: number;
   /** 학습에 낼 문제 유형 */
   quizTypes: QuizType[];
+  /** 뜻을 볼 때 발음을 자동으로 들려준다 */
+  autoSpeak: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -15,6 +17,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultLevel: "N4",
   dailyNew: 20,
   quizTypes: DEFAULT_QUIZ_TYPES,
+  autoSpeak: true,
 };
 
 /** 기기에 저장하고, 백업 파일과 동기화로 주고받는 학습 데이터 */

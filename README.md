@@ -16,7 +16,8 @@
 - **커버**: 노래마다 사진을 넣을 수 있고, 없으면 노래마다 정해진 그라데이션 그림이 나와요.
 - **데모곡**: 처음 열면 이 앱용으로 새로 쓴 데모곡이 들어 있어서 API 키 없이도 모든 화면을 둘러볼 수 있어요.
 
-- **발음 듣기**: 단어·예문·가사 줄을 기기의 일본어 음성으로 읽어 줘요.
+- **발음 듣기**: 단어·예문·가사 줄을 기기의 일본어 음성으로 읽어 줘요. 뜻을 볼 때 자동으로 읽어 주게 할 수도 있어요.
+- **한자 풀이**: 단어에 들어 있는 한자마다 훈음(별 성), 상용한자 여부·학년, 획수, 음독·훈독, 내 단어장의 같은 한자 단어를 보여 줘요.
 - **문제 유형**: 뜻 떠올리기, 뜻 보고 단어 고르기, 가사 빈칸, 읽는 법 쓰기를 섞어서 내요.
 - **백업**: 학습 기록을 파일로 내보내고 다시 불러올 수 있어요.
 - **로그인 · 동기화**: Google·카카오로 로그인하면 기록이 계정에 저장돼 여러 기기에서 이어서 써요. 초대 링크를 받은 사람만 가입할 수 있어요.
@@ -85,3 +86,13 @@ public/sw.js              오프라인 캐시용 서비스 워커
 노래 가사는 대부분 저작권이 있어요. 이 앱은 사용자가 직접 붙여넣은 가사를 그 사용자의 기기(로그인하면 그 사람 계정)에만 저장하고,
 AI에는 가사를 다시 출력하지 말고 줄 번호로만 가리키도록 지시해요(예문은 새로 지어냄).
 여러 사람에게 서비스하거나 유료로 낼 때는 가사 제공 방식(라이선스가 있는 가사 API 등)을 따로 검토해야 해요.
+
+## 한자 데이터 출처
+
+`public/kanji.json`은 `scripts/kanji/build-kanji.mjs`로 만들어요.
+
+- 상용 여부·학년·획수·음독·훈독: [KANJIDIC2](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project) (EDRDG, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)), [kanji-data](https://www.npmjs.com/package/kanji-data) 패키지 경유
+- 한국 한자 훈음: [libhangul](https://github.com/libhangul/libhangul) `data/hanja/hanja.txt` (Choe Hwanjin, BSD-3-Clause)
+- 본음 확인: [hanja](https://www.npmjs.com/package/hanja) 패키지 (MIT)
+
+일본 신자체(気·国·学 등)는 `scripts/kanji/shinjitai.json`으로 구자체를 찾아 훈음을 붙이고, 대표 훈음이 어긋난 글자는 `scripts/kanji/overrides.json`에서 바로잡아요. `public/kanji.json`은 KANJIDIC2를 바탕으로 해서 CC BY-SA 4.0을 따라요.

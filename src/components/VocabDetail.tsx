@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import type { Song, VocabItem } from "@/lib/types";
 import { Badge } from "./Badge";
 import { Icon } from "./Icon";
+import { KanjiBreakdown } from "./KanjiBreakdown";
 import { LyricLineView } from "./LyricLineView";
 import { Ruby } from "./Ruby";
 import { SpeakButton } from "./SpeakButton";
@@ -62,6 +63,8 @@ export function VocabDetail({
         <p className="text-[21px] leading-snug font-bold">{item.meaning}</p>
         {item.note && <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{item.note}</p>}
       </div>
+
+      <KanjiBreakdown item={item} />
 
       {song && item.lines.length > 0 && (
         <section>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
@@ -18,7 +18,7 @@ import { useAccount } from "@/lib/account";
 import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-client";
 import type { Artwork } from "@/lib/artwork";
 import { fileToCover } from "@/lib/image";
-import { reviewHref } from "@/lib/review";
+import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
 import { isLearned } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song } from "@/lib/types";
@@ -66,6 +66,17 @@ function SongView({ song }: { song: Song }) {
   const word = openWord ? song.vocab.find((v) => v.id === openWord) : undefined;
   const learned = song.vocab.filter((v) => isLearned(cards[v.id])).length;
   const total = song.vocab.length;
+  const newLog = useStore((s) => s.newLog);
+  const dailyNew = useStore((s) => s.settings.dailyNew);
+  const songs = useStore((s) => s.songs);
+  const order = useStore((s) => s.order);
+  const [now] = useState(Date.now);
+  const today = useMemo(
+    () =>
+      buildQueue(songs, order, cards, now, { songId: song.id, newLimit: remainingNew(dailyNew, newLog, now) }).queue
+        .length,
+    [songs, order, cards, now, song.id, dailyNew, newLog],
+  );
 
   return (
     <div>
@@ -92,10 +103,19 @@ function SongView({ song }: { song: Song }) {
       {song.summary && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{song.summary}</p>}
 
       {song.status === "ready" && total > 0 && (
-        <div className="card mt-5 grid grid-cols-3 px-2 py-4">
-          <Stat value={total} label="단어" />
-          <Stat value={song.grammar.length} label="문법" />
-          <Stat value={learned} label="외운 단어" />
+        <div className="card mt-5 px-2 pt-4 pb-3">
+          <div className="grid grid-cols-3">
+            <Stat value={total} label="단어" />
+            <Stat value={song.grammar.length} label="문법" />
+            <Stat value={learned} label="외운 단어" />
+          </div>
+          <Link
+            href={reviewHref(song.id)}
+            className="btn-primary press mx-2 mt-4 flex items-center justify-center gap-1.5 py-3.5 text-[15px] font-semibold"
+          >
+            이 노래 단어 학습하기
+            {today > 0 && <span className="num rounded-full bg-white/20 px-2 py-0.5 text-[13px]">오늘 {today}개</span>}
+          </Link>
         </div>
       )}
 
@@ -211,14 +231,6 @@ function SongView({ song }: { song: Song }) {
         </ul>
       )}
 
-      {song.status === "ready" && total > 0 && (
-        <Link
-          href={reviewHref(song.id)}
-          className="btn-primary press mt-6 flex items-center justify-center py-4 text-[16px] font-semibold"
-        >
-          이 노래 단어 학습하기
-        </Link>
-      )}
 
       <Sheet open={!!word} onClose={() => setOpenWord(null)} title={song.title}>
         {word && <VocabDetail item={word} song={song} />}

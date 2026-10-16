@@ -10,7 +10,7 @@ const TABS: { href: string; label: string; icon: IconName; match: (p: string) =>
   { href: "/vocab", label: "단어장", icon: "book", match: (p) => p.startsWith("/vocab") },
 ];
 
-/** 떠 있는 유리 동그라미 탭 + 파란 노래 추가 버튼 */
+/** 떠 있는 유리 동그라미 탭 + (홈에서만) 파란 노래 추가 버튼 */
 export function BottomNav() {
   const pathname = usePathname();
   // 복습 화면과 노래 추가 화면은 아래쪽을 자기 버튼에 쓴다.
@@ -38,13 +38,16 @@ export function BottomNav() {
             );
           })}
         </ul>
-        <Link
-          href="/songs/new"
-          aria-label="노래 추가"
-          className="btn-primary press pointer-events-auto grid size-[60px] place-items-center"
-        >
-          <Icon name="plus" className="size-7" />
-        </Link>
+        {/* 새 노래 추가는 홈에서만 */}
+        {pathname === "/" && (
+          <Link
+            href="/songs/new"
+            aria-label="노래 추가"
+            className="btn-primary press pointer-events-auto grid size-[60px] place-items-center"
+          >
+            <Icon name="plus" className="size-7" />
+          </Link>
+        )}
       </div>
     </nav>
   );
