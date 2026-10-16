@@ -5,7 +5,7 @@ import { useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Headline, TopBar } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
-import { startAnalysis, tokenize } from "@/lib/api-client";
+import { autoCover, startAnalysis, tokenize } from "@/lib/api-client";
 import { cleanLyrics } from "@/lib/lyrics";
 import { useStore } from "@/lib/store";
 import { LEVELS, type Level } from "@/lib/types";
@@ -66,6 +66,7 @@ function NewSongForm() {
       const id = createSong({ title: title.trim(), artist: artist.trim(), level, lines: tokenized });
       setSettings({ defaultLevel: level });
       void startAnalysis(id);
+      void autoCover(id);
       router.replace(`/songs/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "가사를 읽지 못했어요.");

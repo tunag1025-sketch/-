@@ -14,6 +14,7 @@ export function LyricLineView({
   vocab,
   onWord,
   focusId,
+  blank = false,
   furigana = true,
 }: {
   line: LyricLine;
@@ -21,6 +22,8 @@ export function LyricLineView({
   vocab: VocabItem[];
   onWord?: (vocabId: string) => void;
   focusId?: string;
+  /** focusId 단어를 빈칸으로 가린다 (가사 빈칸 문제) */
+  blank?: boolean;
   furigana?: boolean;
 }) {
   const matches = matchTokens(line, index, vocab);
@@ -42,6 +45,17 @@ export function LyricLineView({
         ));
         if (!group.id) return <span key={gi}>{content}</span>;
         if (focusId !== undefined) {
+          if (blank && group.id === focusId) {
+            return (
+              <span
+                key={gi}
+                aria-label="빈칸"
+                className="mx-0.5 inline-block w-[3.2em] translate-y-[0.15em] border-b-[3px] border-blue"
+              >
+                &nbsp;
+              </span>
+            );
+          }
           return group.id === focusId ? (
             <mark key={gi} className="focus-word">
               {content}

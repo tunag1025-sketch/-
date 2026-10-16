@@ -16,6 +16,7 @@ import {
   remainingNew,
   reviewHref,
 } from "@/lib/review";
+import { QUIZ_TYPES } from "@/lib/quiz";
 import { dayKey } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 
@@ -34,6 +35,7 @@ function Study() {
   const cards = useStore((s) => s.cards);
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
+  const quizTypes = useStore((s) => s.settings.quizTypes);
   const setSettings = useStore((s) => s.setSettings);
   const [now] = useState(Date.now);
   const [scope, setScope] = useState<string>("all");
@@ -137,6 +139,46 @@ function Study() {
           오늘 새로 배운 단어 <span className="num font-semibold text-ink-2">{newToday}</span>개 · 남은 몫{" "}
           <span className="num font-semibold text-ink-2">{newLimit}</span>개
         </p>
+      </section>
+
+      <section>
+        <h2 className="text-[19px] font-semibold">문제 유형</h2>
+        <p className="mt-1 mb-3 text-[14px] text-ink-3">고른 유형이 섞여서 나와요. 처음 보는 단어는 뜻 떠올리기로 나와요.</p>
+        <ul className="space-y-2">
+          {QUIZ_TYPES.map(({ type, label, hint }) => {
+            const on = quizTypes.includes(type);
+            const last = on && quizTypes.length === 1;
+            return (
+              <li key={type}>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  aria-disabled={last}
+                  onClick={() => {
+                    if (last) return;
+                    setSettings({ quizTypes: on ? quizTypes.filter((t) => t !== type) : [...quizTypes, type] });
+                  }}
+                  className={`press flex w-full items-center gap-3 rounded-[20px] border bg-surface px-4 py-3 text-left ${
+                    on ? "border-blue" : "border-line"
+                  }`}
+                >
+                  <span
+                    className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${
+                      on ? "border-blue bg-blue text-white" : "border-line"
+                    }`}
+                  >
+                    {on && <Icon name="check" className="size-3.5" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold">{label}</span>
+                    <span className="block text-[13px] text-ink-3">{hint}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </section>
     </div>
   );

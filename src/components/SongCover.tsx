@@ -1,4 +1,6 @@
-import { useId } from "react";
+"use client";
+
+import { useId, useState } from "react";
 import type { Song } from "@/lib/types";
 
 // 사진이 없을 때 쓰는 랜덤 아트의 색 묶음 (바탕 + 번지는 동그라미 셋)
@@ -50,7 +52,7 @@ function CoverArt({ id }: { id: string }) {
   );
 }
 
-/** 노래 커버: 직접 고른 사진, 없으면 노래마다 정해진 랜덤 그라데이션 */
+/** 노래 커버: 앨범 커버나 직접 고른 사진, 없으면 노래마다 정해진 랜덤 그라데이션 */
 export function SongCover({
   song,
   className = "size-[60px] rounded-[20px]",
@@ -58,12 +60,15 @@ export function SongCover({
   song: Pick<Song, "id" | "cover">;
   className?: string;
 }) {
+  // 앨범 커버 주소를 못 불러오면(오프라인 등) 랜덤 그림으로 대신한다.
+  const [failed, setFailed] = useState<string | null>(null);
+  const cover = song.cover && song.cover !== failed ? song.cover : undefined;
   return (
     <span className={`block shrink-0 overflow-hidden ${className}`}>
-      {song.cover ? (
-        // data URL이라 next/image 최적화가 필요 없다.
+      {cover ? (
+        // 기기에 저장한 사진(data URL)이나 앨범 커버 주소라 next/image 최적화를 쓰지 않는다.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={song.cover} alt="" className="size-full object-cover" />
+        <img src={cover} alt="" onError={() => setFailed(cover)} className="size-full object-cover" />
       ) : (
         <CoverArt id={song.id} />
       )}

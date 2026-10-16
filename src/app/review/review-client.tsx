@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
 import { LyricLineView } from "@/components/LyricLineView";
@@ -13,6 +13,7 @@ import { Stat } from "@/components/Stat";
 import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
 import { buildQueue, EXTRA_NEW, remainingNew, reviewHref } from "@/lib/review";
+import { blankAnswer, makeChoices, pickQuizType, type QuizType, readingMatches } from "@/lib/quiz";
 import { graduates, intervalLabel, newCard } from "@/lib/srs";
 import { streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
@@ -39,7 +40,13 @@ export function ReviewClient() {
 
 function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
   const songs = useStore((s) => s.songs);
+  const order = useStore((s) => s.order);
   const grade = useStore((s) => s.grade);
+  // 보기(오답)로 쓸 단어: 모은 단어 전체
+  const pool = useMemo(
+    () => order.flatMap((id) => (songs[id]?.status === "ready" ? songs[id].vocab : [])),
+    [songs, order],
+  );
 
   // 시작할 때의 목록을 고정한다. "다시"를 누른 카드는 뒤에 다시 붙인다.
   const [queue, setQueue] = useState(() => {
@@ -96,6 +103,7 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
           key={`${currentId}:${pos}`}
           song={current.song}
           item={current.item}
+          pool={pool}
           next={next}
           pos={pos}
           total={queue.length}
@@ -129,9 +137,34 @@ function ReviewSession({ songId, extra }: { songId?: string; extra: number }) {
   );
 }
 
+type Quiz =
+  | { type: "recall" | "reading" }
+  | { type: "choice" | "blank"; answer: string; choices: string[] };
+
+function makeQuiz(item: VocabItem, song: Song, pool: VocabItem[], enabled: QuizType[]): Quiz {
+  const isNew = !useStore.getState().cards[item.id];
+  const type = pickQuizType(enabled, item, song, pool.length, isNew);
+  if (type === "choice") {
+    return { type, answer: item.word, choices: makeChoices(item, item.word, pool, (v) => v.word) };
+  }
+  if (type === "blank") {
+    const answer = blankAnswer(item, song)!;
+    return { type, answer, choices: makeChoices(item, answer, pool, (v) => v.formInSong || v.word) };
+  }
+  return { type };
+}
+
+const QUESTION: Record<QuizType, string> = {
+  recall: "읽는 법과 뜻을 떠올려 보세요",
+  choice: "이 뜻의 단어는?",
+  blank: "빈칸에 들어갈 말은?",
+  reading: "읽는 법을 히라가나로 써 보세요",
+};
+
 function ReviewCard({
   song,
   item,
+  pool,
   next,
   pos,
   total,
@@ -141,6 +174,7 @@ function ReviewCard({
 }: {
   song: Song;
   item: VocabItem;
+  pool: VocabItem[];
   next?: { song: Song; item: VocabItem };
   pos: number;
   total: number;
@@ -150,12 +184,24 @@ function ReviewCard({
 }) {
   const card = useStore((s) => s.cards[item.id]);
   const furigana = useStore((s) => s.settings.furigana);
-  const [revealed, setRevealed] = useState(false);
+  const quizTypes = useStore((s) => s.settings.quizTypes);
+  const [quiz] = useState(() => makeQuiz(item, song, pool, quizTypes));
+  const [flipped, setFlipped] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [typed, setTyped] = useState("");
   const [now] = useState(Date.now);
   const state = card ?? newCard(now);
-  const contextLine = song.lines[item.lines[0]] ? item.lines[0] : undefined;
+  const contextLine = item.lines.find((n) => song.lines[n]);
   // 앞면을 보는 동안 이 줄의 해석을 미리 받아 둔다.
   const meaning = useLineExplanation(song, contextLine);
+
+  const revealed = quiz.type === "recall" ? flipped : picked !== null;
+  const correct =
+    picked === null
+      ? null
+      : quiz.type === "reading"
+        ? readingMatches(picked, item.reading)
+        : "answer" in quiz && picked === quiz.answer;
 
   // 다음 카드의 해석도 미리.
   const nextLine = next?.item.lines[0];
@@ -164,6 +210,9 @@ function ReviewCard({
       fetchExplanation(next.song, nextLine).catch(() => {});
     }
   }, [next, nextLine]);
+
+  // 문제 유형마다 앞면에서 가사 줄을 보여 줄지(단어 고르기는 가사에 답이 있어 숨긴다)
+  const showLine = contextLine !== undefined && (revealed || quiz.type === "recall" || quiz.type === "blank");
 
   return (
     <div className={revealed ? "pb-56" : "pb-24"}>
@@ -188,7 +237,7 @@ function ReviewCard({
           <Icon name="music" className="size-3.5 shrink-0" />
           {song.title}
         </p>
-        {contextLine !== undefined && (
+        {showLine && (
           <div className="iris mt-3 rounded-2xl px-4 py-2">
             <p className="text-[17px] leading-[2.3]">
               <LyricLineView
@@ -196,6 +245,7 @@ function ReviewCard({
                 index={contextLine}
                 vocab={[item]}
                 focusId={item.id}
+                blank={quiz.type === "blank" && !revealed}
                 furigana={furigana}
               />
             </p>
@@ -222,17 +272,102 @@ function ReviewCard({
             )}
           </div>
         )}
+
         <div className="mt-8 text-center">
           {revealed ? (
-            <WordHeading item={item} center />
+            <>
+              {correct !== null && (
+                <p
+                  className={`mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[14px] font-semibold ${
+                    correct ? "bg-blue-soft text-blue" : "bg-danger/10 text-danger"
+                  }`}
+                  role="status"
+                >
+                  <Icon name={correct ? "check" : "close"} className="size-4" />
+                  {correct ? "정답이에요" : "아쉬워요"}
+                </p>
+              )}
+              {quiz.type === "reading" && !correct && picked && (
+                <p className="font-jp -mt-2 mb-3 text-[14px] text-ink-3">내 답: {picked}</p>
+              )}
+              <WordHeading item={item} center />
+            </>
+          ) : quiz.type === "choice" ? (
+            <>
+              <p className="text-[14px] font-medium text-ink-3">{QUESTION.choice}</p>
+              <p className="mt-2 text-[28px] leading-snug font-bold">{item.meaning}</p>
+              <p className="mt-2 text-[13px] text-ink-3">{item.pos}</p>
+            </>
+          ) : quiz.type === "blank" ? (
+            <>
+              <p className="text-[14px] font-medium text-ink-3">{QUESTION.blank}</p>
+              <p className="mt-1.5 text-[15px] text-ink-2">
+                힌트 · <span className="font-semibold">{item.meaning}</span>
+              </p>
+            </>
           ) : (
             <>
               <div className="font-jp text-[44px] leading-tight font-bold">{item.word}</div>
-              <p className="mt-2 text-[14px] text-ink-3">읽는 법과 뜻을 떠올려 보세요</p>
+              <p className="mt-2 text-[14px] text-ink-3">{QUESTION[quiz.type]}</p>
             </>
           )}
         </div>
+
+        {quiz.type === "reading" && !revealed && (
+          <form
+            className="mt-6 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (typed.trim()) setPicked(typed.trim());
+            }}
+          >
+            <label htmlFor="reading-answer" className="sr-only">
+              읽는 법
+            </label>
+            <input
+              id="reading-answer"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              lang="ja"
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              placeholder="ひらがな"
+              className="font-jp input flex-1 text-center text-[18px]"
+            />
+            <button type="submit" disabled={!typed.trim()} className="btn-primary press px-5 text-[15px] font-semibold disabled:opacity-50">
+              확인
+            </button>
+          </form>
+        )}
       </article>
+
+      {"choices" in quiz && (
+        <div className="mt-3 grid grid-cols-2 gap-2.5" role="group" aria-label="보기">
+          {quiz.choices.map((c) => {
+            const look = picked === null ? "idle" : c === quiz.answer ? "right" : c === picked ? "wrong" : "dim";
+            return (
+              <button
+                key={c}
+                type="button"
+                disabled={picked !== null}
+                onClick={() => setPicked(c)}
+                className={`press font-jp rounded-[20px] border px-3 py-4 text-[20px] font-bold transition-colors ${
+                  look === "right"
+                    ? "border-blue bg-blue-soft text-blue"
+                    : look === "wrong"
+                      ? "border-danger bg-danger/10 text-danger"
+                      : look === "dim"
+                        ? "border-line bg-surface text-ink-3"
+                        : "border-line bg-surface"
+                }`}
+              >
+                {c}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {revealed && (
         <div className="card mt-3 px-5 py-5">
@@ -242,7 +377,18 @@ function ReviewCard({
 
       <div className="pb-safe fixed inset-x-0 bottom-0 z-30">
         <div className="mx-auto max-w-xl px-4 pb-4">
-          {revealed ? (
+          {revealed && correct === false ? (
+            <div className="rounded-[28px] border border-line bg-surface px-4 pt-4 pb-3 shadow-[0_-8px_30px_rgb(31_59_120/0.10)]">
+              <p className="text-center text-[14px] text-ink-3">틀린 단어는 잠시 뒤에 다시 나와요.</p>
+              <button
+                type="button"
+                onClick={() => onAnswer("again")}
+                className="btn-primary press mt-3 flex w-full items-center justify-center py-4 text-[16px] font-semibold"
+              >
+                다음
+              </button>
+            </div>
+          ) : revealed ? (
             <div className="rounded-[28px] border border-line bg-surface px-4 pt-4 pb-3 shadow-[0_-8px_30px_rgb(31_59_120/0.10)]">
               <p className="text-center text-[15px] font-semibold">이 단어, 어땠어요?</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
@@ -262,13 +408,21 @@ function ReviewCard({
                 ))}
               </div>
             </div>
-          ) : (
+          ) : quiz.type === "recall" ? (
             <button
               type="button"
-              onClick={() => setRevealed(true)}
+              onClick={() => setFlipped(true)}
               className="btn-primary press flex w-full items-center justify-center py-4 text-[16px] font-semibold"
             >
               뜻 보기
+            </button>
+          ) : quiz.type !== "reading" ? null : (
+            <button
+              type="button"
+              onClick={() => setPicked("")}
+              className="btn-ghost press flex w-full items-center justify-center py-3.5 text-[15px] font-semibold"
+            >
+              모르겠어요
             </button>
           )}
         </div>

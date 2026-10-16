@@ -67,6 +67,8 @@ export type Song = {
   isDemo?: boolean;
   /** 커버 사진: 직접 고른 사진(JPEG data URL)이나 앨범 커버 주소 */
   cover?: string;
+  /** 앨범 커버를 자동으로 찾아본 적이 있는지 */
+  coverSearched?: boolean;
   /** 마지막으로 바뀐 시각 (기기 사이에서 합칠 때 쓴다) */
   updatedAt?: number;
 };

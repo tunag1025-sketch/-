@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
@@ -14,7 +14,8 @@ import { Spinner } from "@/components/Spinner";
 import { Stat } from "@/components/Stat";
 import { VocabDetail } from "@/components/VocabDetail";
 import { VocabRow } from "@/components/VocabRow";
-import { startAnalysis, useInFlight } from "@/lib/api-client";
+import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-client";
+import type { Artwork } from "@/lib/artwork";
 import { fileToCover } from "@/lib/image";
 import { reviewHref } from "@/lib/review";
 import { isLearned } from "@/lib/srs";
@@ -262,15 +263,32 @@ function CoverPicker({ song }: { song: Song }) {
   const input = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [found, setFound] = useState<Artwork[] | null>(null);
+
+  // 예전에 넣은 노래도 처음 열 때 한 번 앨범 커버를 찾아 본다.
+  useEffect(() => {
+    void autoCover(song.id);
+  }, [song.id]);
+
+  function open() {
+    setMenu(true);
+    if (found === null && !song.isDemo) {
+      findArtwork(song.title, song.artist).then(setFound, () => setFound([]));
+    }
+  }
+
+  function choose(cover: string | undefined) {
+    updateSong(song.id, { cover });
+    setError(null);
+    setMenu(false);
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     try {
-      updateSong(song.id, { cover: await fileToCover(file) });
-      setError(null);
-      setMenu(false);
+      choose(await fileToCover(file));
     } catch {
       setError("사진을 읽지 못했어요. 다른 사진을 골라 주세요.");
       setMenu(true);
@@ -279,38 +297,68 @@ function CoverPicker({ song }: { song: Song }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => (song.cover ? setMenu(true) : input.current?.click())}
-        aria-label={song.cover ? "커버 사진 바꾸기" : "커버 사진 넣기"}
-        className="press relative shrink-0"
-      >
+      <button type="button" onClick={open} aria-label="커버 바꾸기" className="press relative shrink-0">
         <SongCover song={song} className="size-[76px] rounded-[26px]" />
         <span className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full border-2 border-bg bg-surface text-ink-2 shadow-sm">
           <Icon name="camera" className="size-3.5" />
         </span>
       </button>
       <input ref={input} type="file" accept="image/*" onChange={onFile} className="hidden" />
-      <Sheet open={menu} onClose={() => setMenu(false)} title="커버 사진">
+      <Sheet open={menu} onClose={() => setMenu(false)} title="커버">
         {error && <p className="mb-4 text-[15px] text-danger">{error}</p>}
+        {!song.isDemo && (
+          <section className="mb-5">
+            <h3 className="mb-2.5 text-[13px] font-semibold text-ink-3">앨범 커버</h3>
+            {found === null ? (
+              <p className="flex items-center gap-2 py-6 text-[14px] text-ink-3">
+                <Spinner /> 앨범 커버를 찾는 중…
+              </p>
+            ) : found.length === 0 ? (
+              <p className="py-3 text-[14px] text-ink-3">이 제목으로 앨범 커버를 찾지 못했어요. 사진을 직접 골라 주세요.</p>
+            ) : (
+              <ul className="grid grid-cols-3 gap-2.5">
+                {found.map((a) => (
+                  <li key={a.url}>
+                    <button
+                      type="button"
+                      onClick={() => choose(a.url)}
+                      aria-pressed={song.cover === a.url}
+                      className="press block w-full text-left"
+                    >
+                      {/* 외부 이미지라 next/image 설정 없이 그대로 쓴다. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={a.url}
+                        alt=""
+                        loading="lazy"
+                        className={`aspect-square w-full rounded-2xl bg-muted object-cover ${
+                          song.cover === a.url ? "ring-3 ring-blue" : ""
+                        }`}
+                      />
+                      <span className="font-jp mt-1 block truncate text-[12px] font-medium">{a.album || a.title}</span>
+                      <span className="block truncate text-[11px] text-ink-3">{a.artist}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
         <div className="grid gap-2.5">
           <button
             type="button"
             onClick={() => input.current?.click()}
             className="btn-primary press py-3.5 text-[15px] font-semibold"
           >
-            다른 사진 고르기
+            사진 직접 고르기
           </button>
           {song.cover && (
             <button
               type="button"
-              onClick={() => {
-                updateSong(song.id, { cover: undefined });
-                setMenu(false);
-              }}
+              onClick={() => choose(undefined)}
               className="btn-ghost press py-3.5 text-[15px] font-semibold"
             >
-              사진 지우고 랜덤 그림 쓰기
+              커버 지우고 랜덤 그림 쓰기
             </button>
           )}
         </div>

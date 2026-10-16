@@ -1,3 +1,4 @@
+import { DEFAULT_QUIZ_TYPES, type QuizType } from "./quiz";
 import type { CardState, Level, LineExplanation, Song } from "./types";
 
 export type Settings = {
@@ -5,9 +6,16 @@ export type Settings = {
   defaultLevel: Level;
   /** 하루에 새로 배울 단어 수 */
   dailyNew: number;
+  /** 학습에 낼 문제 유형 */
+  quizTypes: QuizType[];
 };
 
-export const DEFAULT_SETTINGS: Settings = { furigana: true, defaultLevel: "N4", dailyNew: 20 };
+export const DEFAULT_SETTINGS: Settings = {
+  furigana: true,
+  defaultLevel: "N4",
+  dailyNew: 20,
+  quizTypes: DEFAULT_QUIZ_TYPES,
+};
 
 /** 기기에 저장하고, 백업 파일과 동기화로 주고받는 학습 데이터 */
 export type UserData = {

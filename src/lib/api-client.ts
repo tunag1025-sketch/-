@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import type { AnalyzeResponse } from "./analysis/normalize";
+import { type Artwork, bestMatch } from "./artwork";
 import type { ExplainRequest } from "./analysis/schema";
 import { explanationKey, useStore } from "./store";
 import type { LineExplanation, LyricLine, Song } from "./types";
@@ -128,4 +129,23 @@ export async function startAnalysis(songId: string, opts: { retokenize?: boolean
   } finally {
     setInFlight(songId, false);
   }
+}
+
+/** 제목·가수로 앨범 커버 후보를 찾는다. */
+export async function findArtwork(title: string, artist: string): Promise<Artwork[]> {
+  const q = new URLSearchParams({ title, artist });
+  const res = await fetch(`/api/artwork?${q}`).catch(() => null);
+  if (!res?.ok) return [];
+  const data = (await res.json().catch(() => null)) as { results?: Artwork[] } | null;
+  return data?.results ?? [];
+}
+
+/** 커버가 없는 노래에 제목·가수가 맞는 앨범 커버를 한 번 찾아 붙인다. */
+export async function autoCover(songId: string): Promise<void> {
+  const song = useStore.getState().songs[songId];
+  if (!song || song.cover || song.coverSearched || song.isDemo) return;
+  useStore.getState().updateSong(songId, { coverSearched: true });
+  const match = bestMatch(await findArtwork(song.title, song.artist), song.title, song.artist);
+  const now = useStore.getState().songs[songId];
+  if (match && now && !now.cover) useStore.getState().updateSong(songId, { cover: match.url });
 }
