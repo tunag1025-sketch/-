@@ -23,20 +23,21 @@ export function KanjiBreakdown({ item }: { item: VocabItem }) {
     <section>
       <h3 className="mb-2.5 text-[13px] font-semibold text-ink-3">한자</h3>
       {list === null ? (
-        <div className="h-28 animate-pulse rounded-[18px] bg-muted" />
+        <div className="h-[88px] animate-pulse rounded-[20px] bg-muted" />
       ) : (
-        <ul className="grid grid-cols-2 gap-2">
+        // 한자마다 한 줄: 왼쪽 큰 글자, 오른쪽 훈음 · 획수 · 읽는 법 · 같은 한자 단어
+        <ul className="divide-y divide-line rounded-[20px] border border-line">
           {list.map((k) => {
-            const same = [...new Map(others.filter((v) => v.word.includes(k.char)).map((v) => [v.word, v])).values()].slice(0, 3);
+            const same = [...new Map(others.filter((v) => v.word.includes(k.char)).map((v) => [v.word, v])).values()].slice(0, 4);
             return (
-              <li key={k.char} className="min-w-0 rounded-[18px] border border-line p-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="font-jp grid size-12 shrink-0 place-items-center rounded-[14px] bg-muted text-[30px] leading-none font-bold">
-                    {k.char}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-[16px] font-bold">{k.hun || "훈음 없음"}</p>
-                    <p className="mt-0.5 truncate text-[12px] font-medium text-ink-3" title={gradeLabel(k.grade)}>
+              <li key={k.char} className="flex items-start gap-3.5 px-4 py-3.5">
+                <span className="font-jp grid size-14 shrink-0 place-items-center rounded-2xl bg-muted text-[34px] leading-none font-bold">
+                  {k.char}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                    <p className="text-[17px] font-bold">{k.hun || "훈음 없음"}</p>
+                    <p className="text-[12px] font-medium text-ink-3" title={gradeLabel(k.grade)}>
                       {k.strokes > 0 && (
                         <>
                           <span className="num">{k.strokes}</span>획 ·{" "}
@@ -45,35 +46,33 @@ export function KanjiBreakdown({ item }: { item: VocabItem }) {
                       <span className={isJoyo(k.grade) ? "text-blue" : undefined}>{gradeShort(k.grade)}</span>
                     </p>
                   </div>
-                </div>
-                {(k.on.length > 0 || k.kun.length > 0) && (
-                  <dl className="mt-2.5 grid grid-cols-[28px_1fr] gap-y-0.5 text-[13px]">
-                    {k.on.length > 0 && (
-                      <>
-                        <dt className="font-semibold text-ink-3">음</dt>
-                        <dd className="font-jp text-ink-2">{k.on.slice(0, 3).join("・")}</dd>
-                      </>
-                    )}
-                    {k.kun.length > 0 && (
-                      <>
-                        <dt className="font-semibold text-ink-3">훈</dt>
-                        <dd className="font-jp text-ink-2">{k.kun.slice(0, 3).join("・")}</dd>
-                      </>
-                    )}
-                  </dl>
-                )}
-                {same.length > 0 && (
-                  <div className="mt-2.5 border-t border-line pt-2">
-                    <p className="text-[11px] font-semibold text-ink-3">같은 한자 단어</p>
-                    <ul className="mt-1 flex flex-wrap gap-1">
+                  {(k.on.length > 0 || k.kun.length > 0) && (
+                    <dl className="mt-1 flex flex-wrap gap-x-3.5 gap-y-0.5 text-[14px]">
+                      {k.on.length > 0 && (
+                        <div className="flex gap-1.5">
+                          <dt className="shrink-0 font-semibold text-ink-3">음</dt>
+                          <dd className="font-jp text-ink-2">{k.on.slice(0, 3).join("・")}</dd>
+                        </div>
+                      )}
+                      {k.kun.length > 0 && (
+                        <div className="flex gap-1.5">
+                          <dt className="shrink-0 font-semibold text-ink-3">훈</dt>
+                          <dd className="font-jp text-ink-2">{k.kun.slice(0, 3).join("・")}</dd>
+                        </div>
+                      )}
+                    </dl>
+                  )}
+                  {same.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1">
+                      <span className="mr-1 text-[12px] font-semibold text-ink-3">같은 한자</span>
                       {same.map((v) => (
-                        <li key={v.id} className="font-jp rounded-full bg-muted px-2 py-0.5 text-[12px] font-semibold">
+                        <span key={v.id} className="font-jp rounded-full bg-muted px-2 py-0.5 text-[13px] font-semibold">
                           {v.word}
-                        </li>
+                        </span>
                       ))}
-                    </ul>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </li>
             );
           })}
