@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { HydrationGate } from "@/components/HydrationGate";
@@ -9,6 +10,7 @@ import { TopBar } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
 import { isWordKey } from "@/lib/cards";
 import { makeBackup, parseBackup } from "@/lib/data";
+import { formatInviteCode } from "@/lib/invite-code";
 import { dayKey } from "@/lib/stats";
 import { useAccount } from "@/lib/account";
 import { pickData, useStore } from "@/lib/store";
@@ -39,6 +41,9 @@ function Settings() {
       {enabled && user && <Reminders />}
       {user?.role === "admin" && <Invites />}
       <Backup />
+      <Link href="/onboarding" className="mx-auto flex w-fit items-center gap-1 text-[14px] font-medium text-ink-3">
+        Utango 소개 다시 보기 <Icon name="chevron" className="size-4" />
+      </Link>
     </div>
   );
 }
@@ -254,11 +259,11 @@ function Reminders() {
   );
 }
 
-/** 관리자: 친구를 부를 초대 링크 (링크 하나에 한 사람) */
+/** 관리자: 친구를 부를 초대 코드 (코드 하나에 한 사람). 받은 사람은 로그인한 뒤 가입 화면에서 넣는다. */
 function Invites() {
   const [invites, setInvites] = useState<Invite[] | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () =>
@@ -271,34 +276,37 @@ function Invites() {
     void load();
   }, []);
 
-  const linkOf = (code: string) => `${window.location.origin}/invite/${code}`;
-
   async function create() {
     setError(null);
     const res = await fetch("/api/invites", { method: "POST" }).catch(() => null);
-    if (!res?.ok) return setError("초대 링크를 만들지 못했어요.");
+    if (!res?.ok) return setError("초대 코드를 만들지 못했어요.");
     const { code } = (await res.json()) as { code: string };
     setFresh(code);
-    setCopied(false);
+    setCopied(null);
     void load();
   }
 
+  async function copy(code: string) {
+    await navigator.clipboard?.writeText(formatInviteCode(code)).catch(() => {});
+    setCopied(code);
+  }
+
+  /** 앱 주소와 함께 메신저로 보낸다. 공유 시트가 없으면 안내문째 복사한다. */
   async function share(code: string) {
-    const url = linkOf(code);
+    const text =
+      `Utango 초대 코드: ${formatInviteCode(code)}\n` +
+      `노래로 일본어 공부하는 앱이에요. 아래 주소에서 로그인한 뒤 이 코드를 넣으면 가입돼요.`;
+    const url = window.location.origin;
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: "Utango 초대",
-          text: "노래로 일본어 공부하는 앱이에요. 이 링크로 가입해 줘!",
-          url,
-        });
+        await navigator.share({ title: "Utango 초대", text, url });
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
       }
     }
-    await navigator.clipboard?.writeText(url).catch(() => {});
-    setCopied(true);
+    await navigator.clipboard?.writeText(`${text}\n${url}`).catch(() => {});
+    setCopied(code);
   }
 
   async function remove(code: string) {
@@ -315,21 +323,39 @@ function Invites() {
       <div className="card divide-y divide-line overflow-hidden">
         <div className="p-4">
           <p className="text-[13px] leading-relaxed text-ink-3">
-            초대 링크를 받은 사람만 가입할 수 있어요. 링크 하나로 한 사람이 가입해요.
+            초대 코드를 받은 사람만 가입할 수 있어요. 받은 사람이 로그인한 뒤 코드를 넣으면 가입되고, 코드 하나로 한
+            사람이 가입해요.
           </p>
           <button
             type="button"
             onClick={create}
             className="btn-primary press mt-3 flex h-[52px] w-full items-center justify-center gap-1.5 text-[15px] font-bold"
           >
-            <Icon name="plus" className="size-4" /> 초대 링크 만들기
+            <Icon name="plus" className="size-4" /> 초대 코드 만들기
           </button>
           {fresh && (
-            <div className="iris mt-3 rounded-2xl px-4 py-3">
-              <p className="truncate text-[14px] font-medium">{linkOf(fresh)}</p>
-              <button type="button" onClick={() => share(fresh)} className="mt-1.5 text-[14px] font-semibold text-blue">
-                {copied ? "복사했어요" : "보내기 · 복사"}
-              </button>
+            <div className="iris mt-3 rounded-2xl px-4 py-4 text-center">
+              <p className="text-[12px] font-semibold text-ink-3">새 초대 코드</p>
+              <p className="num mt-1 text-[30px] leading-tight font-semibold tracking-[0.12em] select-all">
+                {formatInviteCode(fresh)}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => copy(fresh)}
+                  className="press flex h-11 items-center justify-center gap-1.5 rounded-full bg-surface text-[14px] font-semibold"
+                >
+                  <Icon name={copied === fresh ? "check" : "copy"} className="size-4" />
+                  {copied === fresh ? "복사했어요" : "코드 복사"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => share(fresh)}
+                  className="btn-primary press flex h-11 items-center justify-center text-[14px] font-semibold"
+                >
+                  보내기
+                </button>
+              </div>
             </div>
           )}
           {error && <p className="mt-3 text-[14px] text-danger">{error}</p>}
@@ -339,21 +365,22 @@ function Invites() {
             {invites.map((inv) => (
               <li key={inv.code} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-medium">
-                    {inv.usedBy ? `${inv.usedBy} 님이 가입했어요` : "아직 안 쓴 링크"}
+                  <p className={`num truncate text-[15px] font-semibold tracking-[0.06em] ${inv.usedBy ? "text-ink-3" : ""}`}>
+                    {formatInviteCode(inv.code)}
                   </p>
-                  <p className="num text-[12px] text-ink-3">
-                    {new Date(inv.createdAt).toLocaleDateString("ko-KR")} 만듦
+                  <p className="truncate text-[12px] text-ink-3">
+                    {inv.usedBy ? `${inv.usedBy} 님이 가입했어요` : "아직 안 썼어요"} ·{" "}
+                    <span className="num">{new Date(inv.createdAt).toLocaleDateString("ko-KR")}</span> 만듦
                   </p>
                 </div>
                 {!inv.usedBy && (
                   <>
                     <button
                       type="button"
-                      onClick={() => share(inv.code)}
+                      onClick={() => copy(inv.code)}
                       className="text-[13px] font-semibold text-blue"
                     >
-                      보내기
+                      {copied === inv.code ? "복사했어요" : "복사"}
                     </button>
                     <button
                       type="button"

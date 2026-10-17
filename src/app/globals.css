@@ -305,3 +305,71 @@ rt {
     animation: none !important;
   }
 }
+
+/* 시작 화면: 앱 아이콘과 이름. 탭을 처음 열 때만 잠깐 보이고 화면이 준비되면 사라진다 (src/lib/splash.ts). */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 8vh;
+  background: var(--bg);
+  transition:
+    opacity 0.35s ease,
+    visibility 0.35s;
+  /* 스크립트가 돌지 못해도 잠시 뒤에는 사라지게 */
+  animation: splash-out 0.35s ease 5s forwards;
+}
+#splash[data-state="hold"] {
+  animation: none;
+}
+#splash[data-state="off"],
+#splash[data-state="out"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+#splash[data-state="off"] {
+  transition: none;
+}
+.splash-icon {
+  width: 108px;
+  height: 108px;
+  border-radius: 21.875%;
+  box-shadow: 0 16px 36px rgb(47 107 242 / 0.26);
+  animation: splash-pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.splash-name {
+  margin-top: 22px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.splash-tag {
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes splash-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #splash {
+    animation: splash-out 1ms 5s forwards !important;
+  }
+}

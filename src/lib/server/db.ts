@@ -68,6 +68,16 @@ create table if not exists push_subscriptions (
   last_sent_day text
 );
 create index if not exists push_subscriptions_user on push_subscriptions (user_id);
+create table if not exists pending_signups (
+  id text primary key,
+  provider text not null,
+  provider_user_id text not null,
+  name text not null default '',
+  email text,
+  image text,
+  attempts int not null default 0,
+  expires_at timestamptz not null
+);
 `;
 
 let ready: Promise<void> | null = null;

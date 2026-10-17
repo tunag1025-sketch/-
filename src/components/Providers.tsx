@@ -6,6 +6,7 @@ import { useInFlight } from "@/lib/api-client";
 import demoSong from "@/lib/demo-song.json";
 import { explanationKey, useHydrated, useStore } from "@/lib/store";
 import { applyPreviewTheme, PREVIEW, PREVIEW_ANALYZING_ID, PREVIEW_GUEST } from "@/lib/preview";
+import { hideSplash } from "@/lib/splash";
 import { startSync, stopSync, useSyncStatus } from "@/lib/sync";
 import type { Song } from "@/lib/types";
 
@@ -31,6 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         applyPreviewTheme();
       }
       useHydrated.setState({ hydrated: true });
+      hideSplash();
       void loadAccount();
     };
     const result = useStore.persist.rehydrate();

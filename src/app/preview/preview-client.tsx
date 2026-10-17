@@ -13,6 +13,8 @@ const GROUPS: { title: string; dark?: boolean; screens: Screen[] }[] = [
     screens: [
       { path: "/", title: "홈", note: "오늘 학습 · 나의 기록 · 내 노래" },
       { path: "/?as=guest", title: "홈 · 로그인 전", note: "로그인 안내가 보여요" },
+      { path: "/?splash=1", title: "시작 화면", note: "앱을 처음 열 때 잠깐 보여요" },
+      { path: "/onboarding?as=guest", title: "첫 안내", note: "처음 연 사람에게 · 옆으로 넘겨요" },
     ],
   },
   {
@@ -61,7 +63,7 @@ const GROUPS: { title: string; dark?: boolean; screens: Screen[] }[] = [
       { path: "/settings", title: "설정", note: "관리자 계정 · 동기화 · 초대 · 백업" },
       { path: "/settings?as=guest", title: "설정 · 로그인 전" },
       { path: "/login?as=guest", title: "로그인" },
-      { path: "/invite/SAMPLE7Q2K?as=guest", title: "초대 받기" },
+      { path: "/signup?as=guest", title: "가입 · 초대 코드", note: "처음 로그인한 사람 · 샘플 코드 K7QM-2XPA" },
     ],
   },
   {

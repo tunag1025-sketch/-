@@ -9,8 +9,8 @@ import { Spinner } from "@/components/Spinner";
 import { useAccount } from "@/lib/account";
 
 const ERRORS: Record<string, string> = {
-  invite_required: "초대받은 사람만 가입할 수 있어요. 받은 초대 링크로 들어와 주세요.",
-  invite_used: "이미 누가 쓴 초대 링크예요. 새 초대 링크를 받아 주세요.",
+  invite_required: "초대받은 사람만 가입할 수 있어요. 로그인한 뒤 받은 초대 코드를 넣어 주세요.",
+  invite_used: "이미 다른 사람이 쓴 초대 코드예요. 새 코드를 받아 주세요.",
   expired: "로그인 시간이 지났어요. 다시 시도해 주세요.",
   denied: "로그인을 취소했어요.",
   unavailable: "지금은 이 방법으로 로그인할 수 없어요.",
@@ -57,7 +57,9 @@ function Login({ error, next }: { error: string | null; next?: string }) {
       ) : enabled ? (
         <>
           <LoginButtons next={next} />
-          <p className="text-center text-[13px] text-ink-3">처음이라면 초대 링크로 들어와야 가입할 수 있어요.</p>
+          <p className="text-center text-[13px] leading-relaxed text-ink-3">
+            처음이라면 로그인한 뒤 받은 초대 코드를 넣으면 가입돼요.
+          </p>
         </>
       ) : (
         <p className="card px-5 py-5 text-[15px] text-ink-2">아직 로그인이 준비되지 않았어요.</p>

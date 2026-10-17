@@ -49,7 +49,7 @@ if (PREVIEW) {
     }
     const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
     const { previewApi } = await import("./preview-data");
-    return previewApi(url, method, PREVIEW_GUEST);
+    return previewApi(url, method, PREVIEW_GUEST, typeof init?.body === "string" ? init.body : undefined);
   };
 }
 

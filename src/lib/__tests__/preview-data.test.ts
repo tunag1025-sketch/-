@@ -68,6 +68,14 @@ describe("preview API", () => {
     expect((await call("/api/invites")).invites.map((i: { code: string }) => i.code)).toContain(code);
   });
 
+  it("signs up with an unused sample invite code only", async () => {
+    const signup = (code: string) => previewApi(new URL("/api/signup", "http://x"), "POST", true, JSON.stringify({ code }));
+    expect((await signup("nope-code")).status).toBe(400);
+    expect((await (await signup("T4HN-8WRC")).json()).code).toBe("invite_used");
+    expect((await signup("k7qm-2xpa")).ok).toBe(true);
+    expect((await (await signup("K7QM2XPA")).json()).code).toBe("invite_used");
+  });
+
   it("never pulls anything from sync", async () => {
     expect(await call("/api/sync?since=0")).toEqual({ entities: [], cursor: 0, more: false });
   });

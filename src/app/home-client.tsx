@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { HydrationGate } from "@/components/HydrationGate";
 import { Icon, IconCircle } from "@/components/Icon";
 import { MemoryBar, MemoryLegend } from "@/components/MemoryBar";
@@ -13,6 +14,7 @@ import { useAccount } from "@/lib/account";
 import { useInFlight } from "@/lib/api-client";
 import { buildDeck, kanjiKey, uniqueVocab } from "@/lib/cards";
 import { kanjiIn, useKanjiTable } from "@/lib/kanji";
+import { useNeedsOnboarding } from "@/lib/onboarding";
 import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
 import { buildQueue, EXTRA_NEW, KANJI_HREF, remainingNew, reviewHref } from "@/lib/review";
 import { progressOf } from "@/lib/srs";
@@ -34,9 +36,21 @@ function songLevel(p: { total: number; long: number; short: number }): Exclude<F
 export function HomeClient() {
   return (
     <HydrationGate>
-      <Home />
+      <FirstRun>
+        <Home />
+      </FirstRun>
     </HydrationGate>
   );
+}
+
+/** 처음 연 사람은 홈 대신 첫 안내로 보낸다. */
+function FirstRun({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const first = useNeedsOnboarding();
+  useEffect(() => {
+    if (first) router.replace("/onboarding");
+  }, [first, router]);
+  return first ? null : children;
 }
 
 function Home() {

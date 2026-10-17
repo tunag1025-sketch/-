@@ -28,7 +28,7 @@ run("server: sign in, invites, sync", () => {
     sync = await import("../server/sync");
     const { db, ensureSchema } = await import("../server/db");
     sql = db();
-    await sql`drop table if exists push_subscriptions, app_config, entities, invites, sessions, accounts, users cascade`;
+    await sql`drop table if exists pending_signups, push_subscriptions, app_config, entities, invites, sessions, accounts, users cascade`;
     await ensureSchema();
   });
   // 연결은 파일 끝(알림 테스트 뒤)에서 닫는다.
@@ -59,6 +59,45 @@ run("server: sign in, invites, sync", () => {
     expect(again.ok && again.user.name).toBe("새 이름");
     const invites = await auth.listInvites();
     expect(invites[0].usedBy).toBe("새 이름");
+  });
+
+  it("makes typeable invite codes and accepts them in any case or with a hyphen", async () => {
+    const [{ id: ownerId }] = await sql<{ id: string }[]>`select id from users where role = 'admin'`;
+    const code = await auth.createInvite(ownerId);
+    expect(code).toMatch(/^[A-HJKMNP-Z2-9]{8}$/);
+    const typed = `${code.slice(0, 4)}-${code.slice(4)}`.toLowerCase();
+    const user = await auth.signIn(profile("g-typed"), ` ${typed} `);
+    expect(user.ok).toBe(true);
+  });
+
+  it("holds a first-time login until the invite code is entered", async () => {
+    const [{ id: ownerId }] = await sql<{ id: string }[]>`select id from users where role = 'admin'`;
+    const code = await auth.createInvite(ownerId);
+    const token = await auth.createPendingSignup({ ...profile("k-new"), provider: "kakao", name: "새 친구" });
+    expect(await auth.getPendingSignup(token)).toEqual({ provider: "kakao", name: "새 친구", email: null, image: null });
+
+    expect(await auth.completeSignup(token, "WRONG-CODE")).toEqual({ ok: false, reason: "invite_required" });
+    const done = await auth.completeSignup(token, code);
+    expect(done.ok && done.user.name).toBe("새 친구");
+    // 가입하면 맡겨 둔 정보는 지운다.
+    expect(await auth.getPendingSignup(token)).toBeNull();
+    expect(await auth.completeSignup(token, code)).toEqual({ ok: false, reason: "expired" });
+  });
+
+  it("drops a pending signup after too many wrong codes", async () => {
+    const token = await auth.createPendingSignup(profile("g-guesser"));
+    for (let i = 0; i < auth.SIGNUP_ATTEMPTS; i++) {
+      expect((await auth.completeSignup(token, `NOPE${i}`)).ok).toBe(false);
+    }
+    expect(await auth.completeSignup(token, "NOPE")).toEqual({ ok: false, reason: "too_many" });
+    expect(await auth.getPendingSignup(token)).toBeNull();
+  });
+
+  it("does not show an expired pending signup", async () => {
+    const token = await auth.createPendingSignup(profile("g-late"));
+    await sql`update pending_signups set expires_at = now() - interval '1 minute'`;
+    expect(await auth.getPendingSignup(token)).toBeNull();
+    expect(await auth.completeSignup(token, "ANYTHING")).toEqual({ ok: false, reason: "expired" });
   });
 
   it("syncs entities with last-write-wins and keeps the larger day count", async () => {

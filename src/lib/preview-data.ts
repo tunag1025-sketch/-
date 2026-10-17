@@ -5,6 +5,7 @@
 import type { AccountUser } from "./account";
 import type { SongHit } from "./artwork";
 import { grammarKey, kanjiKey } from "./cards";
+import { INVITE_CODE_CHARS, INVITE_CODE_LENGTH, normalizeInviteCode } from "./invite-code";
 import { DEFAULT_SETTINGS, explanationKey, type UserData } from "./data";
 import demoSong from "./demo-song.json";
 import previewSongs from "./preview-songs.json";
@@ -104,11 +105,14 @@ export function makePreviewState(now: number): UserData & { seededDemo: boolean;
   };
 }
 
-// 이 탭에서 만든 초대 링크 (설정 화면에서 만들고 지울 수 있게)
+// 이 탭에서 만든 초대 코드 (설정 화면에서 만들고 지울 수 있게)
 let invites = [
-  { code: "SAMPLE7Q2K", daysAgo: 1, usedBy: null as string | null },
-  { code: "SAMPLE3MX9", daysAgo: 6, usedBy: "민지" },
+  { code: "K7QM2XPA", daysAgo: 1, usedBy: null as string | null },
+  { code: "T4HN8WRC", daysAgo: 6, usedBy: "민지" },
 ];
+
+const sampleCode = () =>
+  Array.from({ length: INVITE_CODE_LENGTH }, () => INVITE_CODE_CHARS[Math.floor(Math.random() * INVITE_CODE_CHARS.length)]).join("");
 
 const SEARCH_HITS: SongHit[] = [
   { title: "雨上がりの帰り道", artist: "Utango 샘플", album: "샘플 앨범", cover: null },
@@ -122,7 +126,7 @@ const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
 /** 미리보기에서 /api/* 대신 돌려줄 응답 */
-export async function previewApi(url: URL, method: string, guest: boolean): Promise<Response> {
+export async function previewApi(url: URL, method: string, guest: boolean, body?: string): Promise<Response> {
   const now = Date.now();
   switch (url.pathname) {
     case "/api/me":
@@ -132,7 +136,7 @@ export async function previewApi(url: URL, method: string, guest: boolean): Prom
     case "/api/invites": {
       if (guest) return json({ message: "로그인이 필요해요.", code: "LOGIN_REQUIRED" }, 401);
       if (method === "POST") {
-        const code = `SAMPLE${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+        const code = sampleCode();
         invites = [{ code, daysAgo: 0, usedBy: null }, ...invites];
         return json({ code });
       }
@@ -165,6 +169,17 @@ export async function previewApi(url: URL, method: string, guest: boolean): Prom
     case "/api/analyze":
       await new Promise((r) => setTimeout(r, 1200));
       return json({ message: "미리보기에서는 단어장을 만들지 않아요.", code: "PREVIEW" }, 503);
+    case "/api/signup": {
+      if (method === "GET") return json({ pending: { provider: "kakao", name: "새 친구", email: null, image: null } });
+      if (method === "DELETE") return json({ ok: true });
+      // 아직 안 쓴 샘플 코드(K7QM-2XPA 등)로만 가입된다.
+      const code = normalizeInviteCode(String((JSON.parse(body ?? "{}") as { code?: unknown }).code ?? ""));
+      const invite = invites.find((i) => i.code === code);
+      if (!invite) return json({ code: "invite_required", message: "맞지 않는 초대 코드예요. 받은 코드를 다시 확인해 주세요." }, 400);
+      if (invite.usedBy) return json({ code: "invite_used", message: "이미 다른 사람이 쓴 초대 코드예요. 새 코드를 받아 주세요." }, 400);
+      invite.usedBy = "새 친구";
+      return json({ ok: true });
+    }
     case "/api/push":
       return json(method === "GET" ? { publicKey: "", subscribed: false } : { ok: true });
     case "/api/push/test":
