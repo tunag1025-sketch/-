@@ -241,7 +241,8 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
                   <button
                     type="button"
                     onClick={() => setOpenLine(openLine === i ? null : i)}
-                    className={`press mt-3.5 grid size-8 place-items-center rounded-full ${
+                    // 줄 높이(19px × 2.3) 가운데, 일본어 글자 높이에 맞춘다. 아래로 삐져나와 해설 상자에 붙지 않게.
+                    className={`press mt-1.5 grid size-8 place-items-center rounded-full ${
                       openLine === i ? "btn-primary" : "border border-line text-ink-3"
                     }`}
                     aria-label="이 줄 해설 보기"

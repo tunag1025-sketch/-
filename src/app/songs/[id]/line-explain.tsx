@@ -11,11 +11,14 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
   const { explanation, error, retry } = useLineExplanation(song, index);
 
   return (
-    <div className="iris mx-2 mt-0.5 mb-1 rounded-[20px] px-4 py-3.5 text-[14px]">
+    // 다음 줄 후리가나가 상자 바로 밑에 붙어 보이지 않게 아래를 더 띄운다.
+    <div className="iris mx-2 mt-2 mb-5 rounded-[20px] px-4 py-3.5 text-[14px]">
       {explanation ? (
         <div className="space-y-3">
           <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 text-[16px] leading-normal font-bold text-pretty">{explanation.translation}</p>
+            <p className="min-w-0 flex-1 text-[16px] leading-normal font-bold break-keep [overflow-wrap:anywhere]">
+              {explanation.translation}
+            </p>
             <SpeakButton text={song.lines[index].text} label="이 줄 듣기" className="size-8" tone="none" />
           </div>
           {explanation.breakdown.length > 0 && (
@@ -26,12 +29,14 @@ export function LineExplain({ song, index }: { song: Song; index: number }) {
                   <span className="font-jp max-w-[50%] shrink-0 rounded-lg bg-surface/80 px-2 text-[14px] leading-[1.75] font-semibold break-words text-blue">
                     {b.part}
                   </span>
-                  <span className="min-w-0 flex-1 leading-[1.55] text-ink-2">{b.meaning}</span>
+                  <span className="min-w-0 flex-1 leading-[1.55] break-keep [overflow-wrap:anywhere] text-ink-2">{b.meaning}</span>
                 </li>
               ))}
             </ul>
           )}
-          {explanation.notes && <p className="leading-[1.65] text-pretty text-ink-2">{explanation.notes}</p>}
+          {explanation.notes && (
+            <p className="leading-[1.65] break-keep [overflow-wrap:anywhere] text-ink-2">{explanation.notes}</p>
+          )}
         </div>
       ) : error ? (
         <div>
