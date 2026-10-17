@@ -6,7 +6,7 @@ import { Spinner } from "@/components/Spinner";
 import { buildDeck, kanjiKey } from "@/lib/cards";
 import { gradeLabel, type KanjiInfo, useKanjiTable } from "@/lib/kanji";
 import { KANJI_NEW_PER_SESSION, type KanjiCard, kanjiDeck } from "@/lib/kanji-deck";
-import { KANJI_HREF } from "@/lib/review";
+import { KANJI_HREF, mixQueue } from "@/lib/review";
 import { memoryOf, newCard } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Grade } from "@/lib/types";
@@ -38,7 +38,10 @@ function KanjiDeckSession({ info }: { info: (char: string) => KanjiInfo }) {
       Date.now(),
       KANJI_NEW_PER_SESSION,
     );
-    return { initial: queue, byKey: Object.fromEntries(pool.map((k) => [kanjiKey(k.char), k])) as Record<string, KanjiCard> };
+    return {
+      initial: mixQueue(queue),
+      byKey: Object.fromEntries(pool.map((k) => [kanjiKey(k.char), k])) as Record<string, KanjiCard>,
+    };
   });
   const session = useStudySession({
     initial,

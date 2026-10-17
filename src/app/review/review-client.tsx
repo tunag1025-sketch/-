@@ -15,6 +15,7 @@ import { speak } from "@/lib/speech";
 import {
   buildQueue,
   EXTRA_NEW,
+  mixQueue,
   type QueueEntry,
   remainingNew,
   reviewHref,
@@ -91,17 +92,19 @@ function ReviewSession({
   const grammarPool = useMemo(() => uniqueGrammar(songs, order), [songs, order]);
 
   // 시작할 때의 목록을 고정한다. "다시"를 누른 카드는 뒤에 다시 붙인다.
-  // 처음 배우는 카드는 '학습', 다시 보는 카드는 '복습'으로 보여 준다. 문형도 단어 사이에 섞여 나온다.
+  // 처음 배우는 카드는 '학습', 다시 보는 카드는 '복습'으로 보여 준다. 노래·가사 순서대로 외우지 않게 순서를 섞는다.
   const [entries] = useState<QueueEntry[]>(() => {
     const { songs, order, cards, newLog, settings } = useStore.getState();
     const now = Date.now();
     if (weak) {
-      return weakWords(songs, order, cards)
-        .slice(0, WEAK_LIMIT)
-        .map((v) => ({ kind: "word", id: v.id, key: cardKey(v), item: v }));
+      return mixQueue(
+        weakWords(songs, order, cards)
+          .slice(0, WEAK_LIMIT)
+          .map((v) => ({ kind: "word", id: v.id, key: cardKey(v), item: v })),
+      );
     }
     const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
-    const { queue } = buildQueue(songs, order, cards, now, { songId, newLimit });
+    const queue = mixQueue(buildQueue(songs, order, cards, now, { songId, newLimit }).queue);
     // 미리보기: 고른 유형으로 낼 수 있는 카드를 맨 앞으로 (다시 보는 카드를 먼저 고른다)
     const vocabCount = uniqueVocab(songs, order).length;
     const fits = look?.grammar

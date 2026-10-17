@@ -29,8 +29,9 @@ export type QueueEntry =
   | { kind: "grammar"; id: string; key: string; item: GrammarItem };
 
 /**
- * 학습할 카드 목록: 기한이 된 카드 먼저(오래된 순), 그다음 새 카드(최근 노래부터, 노래 안에서는 가사 줄 순서로
- * 단어와 문형을 섞는다. 같은 줄이면 단어 다음에 문형).
+ * 학습할 카드 목록: 기한이 된 카드 먼저(오래된 순), 그다음 새 카드.
+ * 새 카드는 노래마다 돌아가며 하나씩 고른다(최근 노래부터). 한 노래 안에서는 가사 줄 순서로 단어와 문형을 섞는다
+ * (같은 줄이면 단어 다음에 문형). 학습 화면은 이 목록을 다시 섞어서 보여 준다(mixQueue).
  * 문형도 단어처럼 함께 학습하고 하루 새 단어 몫도 같이 쓴다.
  * 장기기억은 넣지 않는다. songId를 주면 그 노래 것만.
  * 여러 노래에 나오는 단어·문형은 한 번만 넣는다 (카드를 같이 쓰니 다른 노래에서 배웠으면 새 카드가 아니다).
@@ -43,9 +44,10 @@ export function buildQueue(
   opts: { songId?: string; newLimit: number },
 ): { queue: QueueEntry[]; dueCount: number; newCount: number; freshTotal: number } {
   const due: QueueEntry[] = [];
-  const fresh: QueueEntry[] = [];
+  // 노래마다 아직 안 배운 카드
+  const freshBySong: QueueEntry[][] = [];
   const seen = new Set<string>();
-  const add = (entry: QueueEntry) => {
+  const add = (entry: QueueEntry, fresh: QueueEntry[]) => {
     if (seen.has(entry.key)) return;
     seen.add(entry.key);
     const card = cards[entry.key];
@@ -66,11 +68,27 @@ export function buildQueue(
         return { line: g.line + 0.5, entry: { kind: "grammar", id: `${song.id}#${i}`, key, item: { ...g, key, song } } as const };
       }),
     ];
-    for (const { entry } of inSong.sort((a, b) => a.line - b.line)) add(entry);
+    const fresh: QueueEntry[] = [];
+    for (const { entry } of inSong.sort((a, b) => a.line - b.line)) add(entry, fresh);
+    freshBySong.push(fresh);
   }
   due.sort((a, b) => cards[a.key].due - cards[b.key].due);
+  // 한 노래를 다 배우기 전에도 여러 노래 단어가 고루 나오게 한 바퀴씩 돌며 고른다.
+  const fresh: QueueEntry[] = [];
+  const longest = Math.max(0, ...freshBySong.map((list) => list.length));
+  for (let i = 0; i < longest; i++) fresh.push(...freshBySong.flatMap((list) => (i < list.length ? [list[i]] : [])));
   const newTaken = fresh.slice(0, opts.newLimit);
   return { queue: [...due, ...newTaken], dueCount: due.length, newCount: newTaken.length, freshTotal: fresh.length };
+}
+
+/** 학습 화면에 낼 순서: 노래·가사 순서대로 외우지 않게 섞는다 (기한이 된 카드와 새 카드도 섞인다). */
+export function mixQueue<T>(list: T[], rand: () => number = Math.random): T[] {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 /** '다시'를 이만큼 이상 고른 단어를 자주 틀린 단어로 본다. */

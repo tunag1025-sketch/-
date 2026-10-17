@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQueue, clampDailyNew, type QueueEntry, remainingNew } from "../review";
+import { buildQueue, clampDailyNew, mixQueue, type QueueEntry, remainingNew } from "../review";
 import { newCard } from "../srs";
 import { dayKey } from "../stats";
 import type { CardState, GrammarPoint, Song, VocabItem } from "../types";
@@ -20,10 +20,10 @@ const songs = { a: song("a", ["一", "二", "三"]), b: song("b", ["四", "五"]
 const order = ["a", "b"];
 
 describe("buildQueue", () => {
-  it("puts due cards first, then new cards up to the limit", () => {
+  it("puts due cards first, then new cards up to the limit, taking one from each song in turn", () => {
     const cards: Record<string, CardState> = { 四: { ...newCard(now - 10), due: now - 5 } };
     const { queue, dueCount, newCount, freshTotal } = buildQueue(songs, order, cards, now, { newLimit: 2 });
-    expect(queue.map(nameOf)).toEqual(["四", "一", "二"]);
+    expect(queue.map(nameOf)).toEqual(["四", "一", "五"]);
     expect([dueCount, newCount, freshTotal]).toEqual([1, 2, 4]);
   });
 
@@ -44,7 +44,7 @@ describe("buildQueue", () => {
   it("asks a word that appears in two songs only once", () => {
     const both = { ...songs, c: song("c", ["二", "六"]) };
     const { queue, freshTotal } = buildQueue(both, ["c", ...order], {}, now, { newLimit: 10 });
-    expect(queue.map((e) => e.id)).toEqual(["c:二", "c:六", "a:一", "a:三", "b:四", "b:五"]);
+    expect(queue.map((e) => e.id)).toEqual(["c:二", "a:一", "b:四", "c:六", "a:三", "b:五"]);
     expect(freshTotal).toBe(6);
   });
 
@@ -64,10 +64,23 @@ describe("buildQueue", () => {
     const withGrammar = { a, b: song("b", ["四"], ["〜ても"]) };
     const cards: Record<string, CardState> = { "문법:〜て": { ...newCard(now - 10), due: now - 5 } };
     const { queue, dueCount, newCount, freshTotal } = buildQueue(withGrammar, order, cards, now, { newLimit: 4 });
-    expect(queue.map(nameOf)).toEqual(["〜て", "一", "二", "〜ても", "三"]);
-    expect(queue.map((e) => e.kind)).toEqual(["grammar", "word", "word", "grammar", "word"]);
+    // 노래 a 안에서는 一 → 二 → 〜ても(2줄) → 三 순서, 노래 b의 四가 한 바퀴째에 끼어든다.
+    expect(queue.map(nameOf)).toEqual(["〜て", "一", "四", "二", "〜ても"]);
+    expect(queue.map((e) => e.kind)).toEqual(["grammar", "word", "word", "word", "grammar"]);
     expect(queue[0].key).toBe("문법:〜て");
     expect([dueCount, newCount, freshTotal]).toEqual([1, 4, 5]);
+  });
+});
+
+describe("mixQueue", () => {
+  it("shuffles without losing or repeating cards", () => {
+    let seed = 1;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    const list = Array.from({ length: 30 }, (_, i) => i);
+    const mixed = mixQueue(list, rand);
+    expect(mixed).not.toEqual(list);
+    expect([...mixed].sort((a, b) => a - b)).toEqual(list);
+    expect(list[0]).toBe(0); // 원래 목록은 그대로
   });
 });
 
