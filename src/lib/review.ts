@@ -2,7 +2,7 @@ import { cardKey, grammarKey, uniqueVocab } from "./cards";
 import type { GrammarItem } from "./grammar";
 import { isDue } from "./srs";
 import { dayKey } from "./stats";
-import type { CardState, Song, VocabItem } from "./types";
+import type { CardState, JlptTag, Song, VocabItem } from "./types";
 
 export const DAILY_NEW_OPTIONS = [10, 20, 30, 50] as const;
 /** 직접 정할 때의 범위 */
@@ -23,6 +23,19 @@ export function remainingNew(dailyNew: number, newLog: Record<string, number>, n
   return Math.max(0, dailyNew - (newLog[dayKey(now)] ?? 0));
 }
 
+/** 학습 범위로 고르는 JLPT 레벨 (쉬운 것부터). 'N4'를 고르면 N5·N4 단어 */
+export const JLPT_LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
+export type JlptLevel = (typeof JLPT_LEVELS)[number];
+
+export const parseJlpt = (value: string | null | undefined): JlptLevel | undefined =>
+  JLPT_LEVELS.find((l) => l === value);
+
+/** 고른 레벨까지에 드는 단어인지. 레벨을 모르는 단어(기타)는 넣지 않는다. */
+export function withinJlpt(tag: JlptTag, max: JlptLevel): boolean {
+  const i = JLPT_LEVELS.indexOf(tag as JlptLevel);
+  return i >= 0 && i <= JLPT_LEVELS.indexOf(max);
+}
+
 /** 학습 목록의 한 장: 단어 카드거나, 노래 속 문형 카드 */
 export type QueueEntry =
   | { kind: "word"; id: string; key: string; item: VocabItem }
@@ -33,7 +46,7 @@ export type QueueEntry =
  * 새 카드는 노래마다 돌아가며 하나씩 고른다(최근 노래부터). 한 노래 안에서는 가사 줄 순서로 단어와 문형을 섞는다
  * (같은 줄이면 단어 다음에 문형). 학습 화면은 이 목록을 다시 섞어서 보여 준다(mixQueue).
  * 문형도 단어처럼 함께 학습하고 하루 새 단어 몫도 같이 쓴다.
- * 장기기억은 넣지 않는다. songId를 주면 그 노래 것만.
+ * 장기기억은 넣지 않는다. songId를 주면 그 노래 것만. jlpt를 주면 그 레벨까지의 단어만 (문형은 레벨이 없어 뺀다).
  * 여러 노래에 나오는 단어·문형은 한 번만 넣는다 (카드를 같이 쓰니 다른 노래에서 배웠으면 새 카드가 아니다).
  */
 export function buildQueue(
@@ -41,7 +54,7 @@ export function buildQueue(
   order: string[],
   cards: Record<string, CardState>,
   now: number,
-  opts: { songId?: string; newLimit: number },
+  opts: { songId?: string; newLimit: number; jlpt?: JlptLevel },
 ): { queue: QueueEntry[]; dueCount: number; newCount: number; freshTotal: number } {
   const due: QueueEntry[] = [];
   // 노래마다 아직 안 배운 카드
@@ -58,12 +71,15 @@ export function buildQueue(
     if (opts.songId && id !== opts.songId) continue;
     const song = songs[id];
     if (!song || song.status !== "ready") continue;
+    const { jlpt } = opts;
     const inSong: { line: number; entry: QueueEntry }[] = [
-      ...song.vocab.map((item) => ({
+      ...song.vocab
+        .filter((item) => !jlpt || withinJlpt(item.jlpt, jlpt))
+        .map((item) => ({
         line: item.lines.length ? Math.min(...item.lines) : Infinity,
         entry: { kind: "word", id: item.id, key: cardKey(item), item } as const,
       })),
-      ...song.grammar.map((g, i) => {
+      ...(jlpt ? [] : song.grammar).map((g, i) => {
         const key = grammarKey(g.pattern);
         return { line: g.line + 0.5, entry: { kind: "grammar", id: `${song.id}#${i}`, key, item: { ...g, key, song } } as const };
       }),
@@ -111,11 +127,12 @@ export function weakWords(songs: Record<string, Song>, order: string[], cards: R
 export const KANJI_HREF = "/review?kind=kanji";
 export const WEAK_HREF = "/review?kind=weak";
 
-/** 학습 화면 주소. extra만큼 오늘 새 단어를 더 배운다. */
-export function reviewHref(songId?: string, extra = 0): string {
+/** 학습 화면 주소. extra만큼 오늘 새 단어를 더 배운다. jlpt를 주면 그 레벨까지의 단어만. */
+export function reviewHref(songId?: string, extra = 0, jlpt?: JlptLevel): string {
   const q = new URLSearchParams();
   if (songId) q.set("song", songId);
   if (extra) q.set("extra", String(extra));
+  if (jlpt) q.set("level", jlpt);
   const s = q.toString();
   return s ? `/review?${s}` : "/review";
 }

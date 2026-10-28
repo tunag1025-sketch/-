@@ -14,6 +14,8 @@ import {
   DAILY_NEW_MIN,
   DAILY_NEW_OPTIONS,
   EXTRA_NEW,
+  JLPT_LEVELS,
+  type JlptLevel,
   KANJI_HREF,
   remainingNew,
   reviewHref,
@@ -21,8 +23,9 @@ import {
   WEAK_LAPSES,
   WEAK_LIMIT,
   weakWords,
+  withinJlpt,
 } from "@/lib/review";
-import { buildDeck, kanjiKey } from "@/lib/cards";
+import { buildDeck, kanjiKey, uniqueVocab } from "@/lib/cards";
 import { useKanjiTable } from "@/lib/kanji";
 import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
 import { QUIZ_TYPES } from "@/lib/quiz";
@@ -49,14 +52,21 @@ function Study() {
   const setSettings = useStore((s) => s.setSettings);
   const [now] = useState(Date.now);
   const [scope, setScope] = useState<string>("all");
+  // JLPT 레벨: 고른 레벨까지의 단어만 (자주 틀린 단어에는 쓰지 않는다)
+  const [level, setLevel] = useState<JlptLevel | undefined>();
 
   const newToday = newLog[dayKey(now)] ?? 0;
   const newLimit = remainingNew(dailyNew, newLog, now);
   const plan = useMemo(() => {
     const ready = order.filter((id) => songs[id]?.status === "ready" && songs[id].vocab.length > 0);
-    const count = (id?: string) => buildQueue(songs, order, cards, now, { songId: id, newLimit });
+    const count = (id?: string) => buildQueue(songs, order, cards, now, { songId: id, newLimit, jlpt: level });
     return { ready, all: count(), bySong: Object.fromEntries(ready.map((id) => [id, count(id)])) };
-  }, [songs, order, cards, now, newLimit]);
+  }, [songs, order, cards, now, newLimit, level]);
+  // 레벨마다 모은 단어 수 (그 레벨까지)
+  const levelWords = useMemo(() => {
+    const words = uniqueVocab(songs, order);
+    return Object.fromEntries(JLPT_LEVELS.map((l) => [l, words.filter((v) => withinJlpt(v.jlpt, l)).length]));
+  }, [songs, order]);
   const { ready } = plan;
   // 자주 틀린 단어: 기한과 상관없이 다시 본다
   const weak = useMemo(() => weakWords(songs, order, cards).slice(0, WEAK_LIMIT), [songs, order, cards]);
@@ -65,7 +75,7 @@ function Study() {
   const songId = ready.includes(scope) ? scope : undefined;
   const current = isWeak ? weakPlan : songId ? plan.bySong[songId] : plan.all;
   const total = current.queue.length;
-  const startHref = isWeak ? WEAK_HREF : reviewHref(songId);
+  const startHref = isWeak ? WEAK_HREF : reviewHref(songId, 0, level);
   // 한자 카드: 오늘 볼 수
   const kanjiInfo = useKanjiTable();
   const kanji = useMemo(() => {
@@ -82,6 +92,7 @@ function Study() {
       <section className="card p-5" aria-live="polite">
         <p className={`truncate text-[13px] font-semibold text-ink-2 ${songId ? "font-jp" : ""}`}>
           {isWeak ? "자주 틀린 단어" : songId ? songs[songId].title : "모은 단어 전체"}
+          {!isWeak && level && <span className="font-sans"> · JLPT {level}까지</span>}
         </p>
         <div className="mt-2 flex items-end justify-between gap-3">
           <p className="flex items-baseline gap-1">
@@ -101,7 +112,7 @@ function Study() {
           <>
             <p className="mt-3 text-[14px] text-ink-2">오늘 배울 새 단어를 다 배웠어요.</p>
             <Link
-              href={reviewHref(songId, extra)}
+              href={reviewHref(songId, extra, level)}
               className="btn-primary press mt-4 flex h-[54px] items-center justify-center text-[16px] font-bold"
             >
               새 단어 {Math.min(EXTRA_NEW, current.freshTotal)}개 더 학습하기
@@ -157,6 +168,33 @@ function Study() {
           ))}
         </ul>
       </section>
+
+      {!isWeak && (
+        <section>
+          <h2 className="text-[20px] font-bold">JLPT 레벨</h2>
+          <p className="mt-1 mb-3 text-[14px] leading-[1.55] break-keep text-ink-3">
+            고른 레벨까지의 쉬운 단어만 나와요. N4를 고르면 N5·N4 단어예요. 레벨이 없는 문형은 빠져요.
+          </p>
+          <div className="seg" role="group" aria-label="JLPT 레벨">
+            {[undefined, ...JLPT_LEVELS].map((l) => (
+              <button
+                key={l ?? "all"}
+                type="button"
+                aria-pressed={level === l}
+                onClick={() => setLevel(l)}
+                className="seg-item press num"
+              >
+                {l ?? "전체"}
+              </button>
+            ))}
+          </div>
+          {level && (
+            <p className="mx-1 mt-2.5 text-[13px] text-ink-3">
+              {level}까지 모은 단어 <b className="num font-semibold text-ink-2">{levelWords[level]}</b>개
+            </p>
+          )}
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-[20px] font-bold">한자</h2>

@@ -15,7 +15,9 @@ import { canSpeak, speak } from "@/lib/speech";
 import {
   buildQueue,
   EXTRA_NEW,
+  type JlptLevel,
   mixQueue,
+  parseJlpt,
   type QueueEntry,
   remainingNew,
   reviewHref,
@@ -65,6 +67,7 @@ export function ReviewClient() {
   const songId = params.get("song") ?? undefined;
   const extra = Math.max(0, Number(params.get("extra")) || 0);
   const kind = params.get("kind");
+  const jlpt = parseJlpt(params.get("level"));
   const look = previewLook(params);
   return (
     <HydrationGate>
@@ -72,9 +75,10 @@ export function ReviewClient() {
         <KanjiSession />
       ) : (
         <ReviewSession
-          key={`${kind}:${songId}:${extra}`}
+          key={`${kind}:${songId}:${extra}:${jlpt}`}
           songId={songId}
           extra={extra}
+          jlpt={jlpt}
           weak={kind === "weak"}
           look={look}
         />
@@ -86,11 +90,14 @@ export function ReviewClient() {
 function ReviewSession({
   songId,
   extra,
+  jlpt,
   weak,
   look,
 }: {
   songId?: string;
   extra: number;
+  /** 이 레벨까지의 단어만 */
+  jlpt?: JlptLevel;
   /** 자주 틀린 단어만 */
   weak: boolean;
   look?: Look;
@@ -114,7 +121,7 @@ function ReviewSession({
       );
     }
     const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
-    const queue = mixQueue(buildQueue(songs, order, cards, now, { songId, newLimit }).queue);
+    const queue = mixQueue(buildQueue(songs, order, cards, now, { songId, newLimit, jlpt }).queue);
     // 미리보기: 고른 유형으로 낼 수 있는 카드를 맨 앞으로 (다시 보는 카드를 먼저 고른다)
     const vocabCount = uniqueVocab(songs, order).length;
     const fits = look?.grammar
@@ -151,9 +158,11 @@ function ReviewSession({
   const more = useMemo(() => {
     if (!finished || weak) return null;
     const { songs, order, cards } = useStore.getState();
-    const left = buildQueue(songs, order, cards, now, { songId, newLimit: 0 }).freshTotal;
-    return left > 0 ? { href: reviewHref(songId, extra + EXTRA_NEW), label: `새 단어 ${Math.min(EXTRA_NEW, left)}개 더` } : null;
-  }, [finished, weak, songId, extra, now]);
+    const left = buildQueue(songs, order, cards, now, { songId, newLimit: 0, jlpt }).freshTotal;
+    return left > 0
+      ? { href: reviewHref(songId, extra + EXTRA_NEW, jlpt), label: `새 단어 ${Math.min(EXTRA_NEW, left)}개 더` }
+      : null;
+  }, [finished, weak, songId, extra, jlpt, now]);
   const dailyNew = useStore((s) => s.settings.dailyNew);
 
   if (look?.done) {
@@ -205,7 +214,7 @@ function ReviewSession({
           total={stats.done}
           learned={stats.learned}
           short={stats.short}
-          songTitle={songId ? songs[songId]?.title : weak ? "자주 틀린 단어" : undefined}
+          songTitle={songId ? songs[songId]?.title : weak ? "자주 틀린 단어" : jlpt ? `JLPT ${jlpt}까지` : undefined}
           empty={queue.length === 0}
           emptyText={
             weak

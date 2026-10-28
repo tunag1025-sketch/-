@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQueue, clampDailyNew, mixQueue, type QueueEntry, remainingNew } from "../review";
+import { buildQueue, clampDailyNew, mixQueue, type QueueEntry, remainingNew, reviewHref, withinJlpt } from "../review";
 import { newCard } from "../srs";
 import { dayKey } from "../stats";
 import type { CardState, GrammarPoint, Song, VocabItem } from "../types";
@@ -69,6 +69,24 @@ describe("buildQueue", () => {
     expect(queue.map((e) => e.kind)).toEqual(["grammar", "word", "word", "word", "grammar"]);
     expect(queue[0].key).toBe("문법:〜て");
     expect([dueCount, newCount, freshTotal]).toEqual([1, 4, 5]);
+  });
+});
+
+describe("JLPT level", () => {
+  it("keeps words up to the chosen level and drops grammar and unknown levels", () => {
+    const s = song("a", ["一", "二", "三", "四"], ["〜ても"]);
+    const tags = ["N5", "N4", "N2", "기타"] as const;
+    s.vocab.forEach((v, i) => (v.jlpt = tags[i]));
+    const { queue } = buildQueue({ a: s }, ["a"], {}, now, { newLimit: 10, jlpt: "N4" });
+    expect(queue.map(nameOf)).toEqual(["一", "二"]);
+    expect(withinJlpt("N5", "N3")).toBe(true);
+    expect(withinJlpt("N1", "N3")).toBe(false);
+    expect(withinJlpt("기타", "N1")).toBe(false);
+  });
+
+  it("puts the level in the study link", () => {
+    expect(reviewHref("a", 10, "N4")).toBe("/review?song=a&extra=10&level=N4");
+    expect(reviewHref()).toBe("/review");
   });
 });
 
