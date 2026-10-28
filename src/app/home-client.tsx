@@ -16,7 +16,15 @@ import { buildDeck, kanjiKey, uniqueVocab } from "@/lib/cards";
 import { kanjiIn, useKanjiTable } from "@/lib/kanji";
 import { useNeedsOnboarding } from "@/lib/onboarding";
 import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
-import { buildQueue, EXTRA_NEW, KANJI_HREF, remainingNew, reviewHref } from "@/lib/review";
+import {
+  buildQueue,
+  EXTRA_NEW,
+  EXTRA_REVIEW,
+  KANJI_HREF,
+  reviewedToday,
+  reviewHref,
+  todayLimits,
+} from "@/lib/review";
 import { progressOf } from "@/lib/srs";
 import { dayKey, greeting, lastDays, streak } from "@/lib/stats";
 import { useStore } from "@/lib/store";
@@ -60,17 +68,22 @@ function Home() {
   const reviewLog = useStore((s) => s.reviewLog);
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
+  const dailyReview = useStore((s) => s.settings.dailyReview);
   const ai = useAiStatus();
   const accountEnabled = useAccount((s) => s.enabled);
   const user = useAccount((s) => s.user);
   const [now] = useState(Date.now);
   const [filter, setFilter] = useState<Filter>("all");
 
-  const { queue, dueCount, newCount, freshTotal } = useMemo(
-    () => buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }),
-    [songs, order, cards, now, dailyNew, newLog],
+  const { queue, dueCount, dueTotal, newCount, freshTotal } = useMemo(
+    () => buildQueue(songs, order, cards, now, todayLimits({ settings: { dailyNew, dailyReview }, newLog, cards }, now)),
+    [songs, order, cards, now, dailyNew, dailyReview, newLog],
   );
   const extra = Math.max(0, (newLog[dayKey(now)] ?? 0) - dailyNew) + EXTRA_NEW;
+  // 하루 복습 수를 다 채웠는데 기한이 된 카드가 더 남았을 때
+  const reviewsLeft = dueTotal - dueCount;
+  const extraReview =
+    dailyReview === null ? 0 : Math.max(0, reviewedToday(cards, now) - dailyReview) + EXTRA_REVIEW;
   // 여러 노래에 나오는 단어는 하나로 센다.
   const allVocab = useMemo(() => uniqueVocab(songs, order), [songs, order]);
   const memory = progressOf(allVocab, cards);
@@ -134,17 +147,29 @@ function Home() {
             ? "노래 속 단어를 학습할 시간이에요."
             : freshTotal
               ? "오늘 배울 새 단어를 다 배웠어요."
-              : "오늘 학습은 모두 끝났어요."}
+              : reviewsLeft > 0
+                ? "오늘 복습할 몫을 다 했어요."
+                : "오늘 학습은 모두 끝났어요."}
         </p>
         <Link
-          href={queue.length ? reviewHref() : freshTotal ? reviewHref(undefined, extra) : "/songs/new"}
+          href={
+            queue.length
+              ? reviewHref()
+              : freshTotal
+                ? reviewHref(undefined, extra)
+                : reviewsLeft > 0
+                  ? reviewHref(undefined, 0, undefined, extraReview)
+                  : "/songs/new"
+          }
           className="btn-primary press mt-5 flex h-[54px] items-center justify-center text-[16px] font-bold"
         >
           {queue.length
             ? "학습 시작"
             : freshTotal
               ? `새 단어 ${Math.min(EXTRA_NEW, freshTotal)}개 더 학습하기`
-              : "새 노래 추가하기"}
+              : reviewsLeft > 0
+                ? `복습 ${Math.min(EXTRA_REVIEW, reviewsLeft)}개 더 하기`
+                : "새 노래 추가하기"}
         </Link>
       </section>
 

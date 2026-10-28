@@ -84,6 +84,8 @@ export type CardState = {
   reps: number;
   lapses: number;
   lastReviewed?: number;
+  /** 처음 학습한 시각 (오늘 처음 배운 카드와 복습한 카드를 가른다). 예전 카드에는 없다. */
+  firstReviewed?: number;
   /** 연달아 '완벽'을 고른 횟수 */
   perfect?: number;
   /** 이해·완벽을 고른 횟수 (한 번이라도 있으면 단기기억) */

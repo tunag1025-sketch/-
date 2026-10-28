@@ -11,7 +11,7 @@ export const LEARNED_PERFECT_STREAK = 3;
 export const LEARNED_INTERVAL_DAYS = 21;
 
 export function newCard(now: number): CardState {
-  return { due: now, interval: 0, ease: 2.5, reps: 0, lapses: 0, perfect: 0 };
+  return { due: now, interval: 0, ease: 2.5, reps: 0, lapses: 0, perfect: 0, firstReviewed: now };
 }
 
 /**

@@ -14,7 +14,7 @@ import { uniqueGrammar } from "@/lib/grammar";
 import { useKanjiTable } from "@/lib/kanji";
 import { KANJI_NEW_PER_SESSION, kanjiDeck } from "@/lib/kanji-deck";
 import { kataToHira } from "@/lib/furigana";
-import { buildQueue, KANJI_HREF, remainingNew, reviewHref } from "@/lib/review";
+import { buildQueue, KANJI_HREF, reviewHref, todayLimits } from "@/lib/review";
 import { isDue, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { VocabItem } from "@/lib/types";
@@ -46,6 +46,7 @@ function VocabBook({ openWord, initialView }: { openWord?: string; initialView: 
   const cards = useStore((s) => s.cards);
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
+  const dailyReview = useStore((s) => s.settings.dailyReview);
   const [view, setView] = useState<View>(initialView);
   const [now] = useState(Date.now);
   const kanjiInfo = useKanjiTable();
@@ -57,13 +58,14 @@ function VocabBook({ openWord, initialView }: { openWord?: string; initialView: 
   );
   // 문형은 단어 학습에 섞여 나오니 단어와 같은 목록으로 학습한다
   const today = useMemo(() => {
-    const words = buildQueue(songs, order, cards, now, { newLimit: remainingNew(dailyNew, newLog, now) }).queue.length;
+    const limits = todayLimits({ settings: { dailyNew, dailyReview }, newLog, cards }, now);
+    const words = buildQueue(songs, order, cards, now, limits).queue.length;
     return {
       word: words,
       grammar: words,
       kanji: kanji ? buildDeck(kanji, cards, now, KANJI_NEW_PER_SESSION).queue.length : 0,
     };
-  }, [songs, order, cards, now, dailyNew, newLog, kanji]);
+  }, [songs, order, cards, now, dailyNew, dailyReview, newLog, kanji]);
   const sizes: Record<View, number | null> = { word: words.length, grammar: grammar.length, kanji: kanji?.length ?? null };
   const href = { word: reviewHref(), grammar: reviewHref(), kanji: KANJI_HREF }[view];
   const n = today[view];

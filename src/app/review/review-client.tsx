@@ -15,11 +15,12 @@ import { canSpeak, speak, speechUnlocked } from "@/lib/speech";
 import {
   buildQueue,
   EXTRA_NEW,
+  EXTRA_REVIEW,
   type JlptLevel,
   mixQueue,
   parseJlpt,
   type QueueEntry,
-  remainingNew,
+  todayLimits,
   reviewHref,
   WEAK_LIMIT,
   weakWords,
@@ -66,6 +67,7 @@ export function ReviewClient() {
   const params = useSearchParams();
   const songId = params.get("song") ?? undefined;
   const extra = Math.max(0, Number(params.get("extra")) || 0);
+  const extraReview = Math.max(0, Number(params.get("more")) || 0);
   const kind = params.get("kind");
   const jlpt = parseJlpt(params.get("level"));
   const look = previewLook(params);
@@ -75,9 +77,10 @@ export function ReviewClient() {
         <KanjiSession />
       ) : (
         <ReviewSession
-          key={`${kind}:${songId}:${extra}:${jlpt}`}
+          key={`${kind}:${songId}:${extra}:${extraReview}:${jlpt}`}
           songId={songId}
           extra={extra}
+          extraReview={extraReview}
           jlpt={jlpt}
           weak={kind === "weak"}
           look={look}
@@ -90,12 +93,16 @@ export function ReviewClient() {
 function ReviewSession({
   songId,
   extra,
+  extraReview,
   jlpt,
   weak,
   look,
 }: {
   songId?: string;
+  /** 오늘 몫보다 더 배우는 새 단어 수 */
   extra: number;
+  /** 오늘 몫보다 더 하는 복습 수 */
+  extraReview: number;
   /** 이 레벨까지의 단어만 */
   jlpt?: JlptLevel;
   /** 자주 틀린 단어만 */
@@ -120,8 +127,8 @@ function ReviewSession({
           .map((v) => ({ kind: "word", id: v.id, key: cardKey(v), item: v })),
       );
     }
-    const newLimit = remainingNew(settings.dailyNew + extra, newLog, now);
-    const queue = mixQueue(buildQueue(songs, order, cards, now, { songId, newLimit, jlpt }).queue);
+    const limits = todayLimits({ settings, newLog, cards }, now, { fresh: extra, review: extraReview });
+    const queue = mixQueue(buildQueue(songs, order, cards, now, { songId, ...limits, jlpt }).queue);
     // 미리보기: 고른 유형으로 낼 수 있는 카드를 맨 앞으로 (다시 보는 카드를 먼저 고른다)
     const vocabCount = uniqueVocab(songs, order).length;
     const fits = look?.grammar
@@ -152,18 +159,32 @@ function ReviewSession({
   const current = wordOf(entry);
   const next = wordOf(session.next ? byId.get(session.next) : undefined);
   const exitHref = songId ? `/songs/${songId}` : "/";
-  // 오늘 몫을 다 배웠어도 아직 안 배운 단어가 남았으면 더 학습할 수 있게 한다.
+  // 오늘 몫을 다 했어도 아직 안 배운 단어나 (하루 복습 수를 넘겨) 남은 복습이 있으면 더 할 수 있게 한다.
   const finished = !current && !grammar;
   const [now] = useState(Date.now);
   const more = useMemo(() => {
     if (!finished || weak) return null;
-    const { songs, order, cards } = useStore.getState();
-    const left = buildQueue(songs, order, cards, now, { songId, newLimit: 0, jlpt }).freshTotal;
-    return left > 0
-      ? { href: reviewHref(songId, extra + EXTRA_NEW, jlpt), label: `새 단어 ${Math.min(EXTRA_NEW, left)}개 더` }
-      : null;
-  }, [finished, weak, songId, extra, jlpt, now]);
+    const { songs, order, cards, settings } = useStore.getState();
+    // 시작할 때 시각으로 세서, 이번에 답한 카드는 다시 세지 않는다.
+    const left = buildQueue(songs, order, cards, now, { songId, newLimit: 0, jlpt });
+    if (left.freshTotal > 0) {
+      return {
+        kind: "new" as const,
+        href: reviewHref(songId, extra + EXTRA_NEW, jlpt, extraReview),
+        label: `새 단어 ${Math.min(EXTRA_NEW, left.freshTotal)}개 더`,
+      };
+    }
+    if (settings.dailyReview !== null && left.dueTotal > 0) {
+      return {
+        kind: "review" as const,
+        href: reviewHref(songId, extra, jlpt, extraReview + EXTRA_REVIEW),
+        label: `복습 ${Math.min(EXTRA_REVIEW, left.dueTotal)}개 더`,
+      };
+    }
+    return null;
+  }, [finished, weak, songId, extra, extraReview, jlpt, now]);
   const dailyNew = useStore((s) => s.settings.dailyNew);
+  const dailyReview = useStore((s) => s.settings.dailyReview);
 
   if (look?.done) {
     return (
@@ -219,9 +240,11 @@ function ReviewSession({
           emptyText={
             weak
               ? "자주 틀린 단어가 없어요. 잘하고 있어요!"
-              : more
+              : more?.kind === "new"
                 ? `오늘 배울 새 단어 ${dailyNew}개를 다 배웠어요.`
-                : "노래를 추가하거나 다시 볼 때가 되면 단어가 생겨요."
+                : more?.kind === "review"
+                  ? `오늘 복습할 ${dailyReview}개를 다 했어요.`
+                  : "노래를 추가하거나 다시 볼 때가 되면 단어가 생겨요."
           }
           studiedNew={session.fresh.size > 0}
           exitHref={weak ? "/study" : exitHref}

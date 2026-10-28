@@ -1,4 +1,5 @@
-import { cardKey, grammarKey, uniqueVocab } from "./cards";
+import { cardKey, grammarKey, kanjiKey, uniqueVocab } from "./cards";
+import type { Settings } from "./data";
 import type { GrammarItem } from "./grammar";
 import { isDue } from "./srs";
 import { dayKey } from "./stats";
@@ -9,18 +10,57 @@ export const DAILY_NEW_OPTIONS = [10, 20, 30, 50] as const;
 export const DAILY_NEW_MIN = 1;
 export const DAILY_NEW_MAX = 300;
 
-/** 직접 넣은 하루 학습량을 범위 안의 정수로 맞춘다. 숫자가 아니면 null. */
-export function clampDailyNew(input: string): number | null {
+/** 직접 넣은 하루 학습량을 1~max 안의 정수로 맞춘다. 숫자가 아니면 null. */
+export function clampAmount(input: string, max: number): number | null {
   const n = Math.round(Number(input));
   if (!input.trim() || !Number.isFinite(n)) return null;
-  return Math.min(DAILY_NEW_MAX, Math.max(DAILY_NEW_MIN, n));
+  return Math.min(max, Math.max(DAILY_NEW_MIN, n));
 }
+export const clampDailyNew = (input: string) => clampAmount(input, DAILY_NEW_MAX);
 /** '더 학습하기'로 한 번에 더하는 새 단어 수 */
 export const EXTRA_NEW = 10;
+
+/** 하루 복습 수 고르기 (null = 기한이 된 것 모두) */
+export const DAILY_REVIEW_OPTIONS = [null, 50, 100, 200] as const;
+export const DAILY_REVIEW_MAX = 999;
+/** '복습 더 하기'로 한 번에 더하는 복습 수 */
+export const EXTRA_REVIEW = 20;
 
 /** 오늘 더 배울 수 있는 새 단어 수 */
 export function remainingNew(dailyNew: number, newLog: Record<string, number>, now: number): number {
   return Math.max(0, dailyNew - (newLog[dayKey(now)] ?? 0));
+}
+
+const KANJI = kanjiKey("");
+
+/** 오늘 이미 복습한 카드 수: 오늘 답한 카드 중 오늘 처음 배운 게 아닌 것 (카드마다 한 번, 한자 카드는 빼고) */
+export function reviewedToday(cards: Record<string, CardState>, now: number): number {
+  const today = dayKey(now);
+  let n = 0;
+  for (const [key, c] of Object.entries(cards)) {
+    if (key.startsWith(KANJI) || !c.lastReviewed || dayKey(c.lastReviewed) !== today) continue;
+    if (c.firstReviewed !== undefined && dayKey(c.firstReviewed) === today) continue;
+    n++;
+  }
+  return n;
+}
+
+/** 오늘 더 볼 수 있는 복습 수. 하루 복습 수를 정하지 않았으면 끝이 없다(Infinity). */
+export function remainingReviews(dailyReview: number | null, cards: Record<string, CardState>, now: number): number {
+  return dailyReview === null ? Infinity : Math.max(0, dailyReview - reviewedToday(cards, now));
+}
+
+/** 오늘 학습 몫: 새 단어 수와 복습 수. 더 학습하기로 늘린 만큼(extra) 더한다. */
+export function todayLimits(
+  state: { settings: Pick<Settings, "dailyNew" | "dailyReview">; newLog: Record<string, number>; cards: Record<string, CardState> },
+  now: number,
+  extra: { fresh?: number; review?: number } = {},
+): { newLimit: number; reviewLimit: number } {
+  const { dailyNew, dailyReview } = state.settings;
+  return {
+    newLimit: remainingNew(dailyNew + (extra.fresh ?? 0), state.newLog, now),
+    reviewLimit: remainingReviews(dailyReview === null ? null : dailyReview + (extra.review ?? 0), state.cards, now),
+  };
 }
 
 /** 학습 범위로 고르는 JLPT 레벨 (쉬운 것부터). 'N4'를 고르면 N5·N4 단어 */
@@ -47,6 +87,7 @@ export type QueueEntry =
  * (같은 줄이면 단어 다음에 문형). 학습 화면은 이 목록을 다시 섞어서 보여 준다(mixQueue).
  * 문형도 단어처럼 함께 학습하고 하루 새 단어 몫도 같이 쓴다.
  * 장기기억은 넣지 않는다. songId를 주면 그 노래 것만. jlpt를 주면 그 레벨까지의 단어만 (문형은 레벨이 없어 뺀다).
+ * reviewLimit을 주면 기한이 된 카드도 그만큼만 (오래 밀린 것부터).
  * 여러 노래에 나오는 단어·문형은 한 번만 넣는다 (카드를 같이 쓰니 다른 노래에서 배웠으면 새 카드가 아니다).
  */
 export function buildQueue(
@@ -54,8 +95,8 @@ export function buildQueue(
   order: string[],
   cards: Record<string, CardState>,
   now: number,
-  opts: { songId?: string; newLimit: number; jlpt?: JlptLevel },
-): { queue: QueueEntry[]; dueCount: number; newCount: number; freshTotal: number } {
+  opts: { songId?: string; newLimit: number; reviewLimit?: number; jlpt?: JlptLevel },
+): { queue: QueueEntry[]; dueCount: number; dueTotal: number; newCount: number; freshTotal: number } {
   const due: QueueEntry[] = [];
   // 노래마다 아직 안 배운 카드
   const freshBySong: QueueEntry[][] = [];
@@ -94,7 +135,14 @@ export function buildQueue(
   const longest = Math.max(0, ...freshBySong.map((list) => list.length));
   for (let i = 0; i < longest; i++) fresh.push(...freshBySong.flatMap((list) => (i < list.length ? [list[i]] : [])));
   const newTaken = fresh.slice(0, opts.newLimit);
-  return { queue: [...due, ...newTaken], dueCount: due.length, newCount: newTaken.length, freshTotal: fresh.length };
+  const dueTaken = due.slice(0, opts.reviewLimit ?? Infinity);
+  return {
+    queue: [...dueTaken, ...newTaken],
+    dueCount: dueTaken.length,
+    dueTotal: due.length,
+    newCount: newTaken.length,
+    freshTotal: fresh.length,
+  };
 }
 
 /** 학습 화면에 낼 순서: 노래·가사 순서대로 외우지 않게 섞는다 (기한이 된 카드와 새 카드도 섞인다). */
@@ -127,11 +175,15 @@ export function weakWords(songs: Record<string, Song>, order: string[], cards: R
 export const KANJI_HREF = "/review?kind=kanji";
 export const WEAK_HREF = "/review?kind=weak";
 
-/** 학습 화면 주소. extra만큼 오늘 새 단어를 더 배운다. jlpt를 주면 그 레벨까지의 단어만. */
-export function reviewHref(songId?: string, extra = 0, jlpt?: JlptLevel): string {
+/**
+ * 학습 화면 주소. extra만큼 오늘 새 단어를, extraReview만큼 복습을 더 한다.
+ * jlpt를 주면 그 레벨까지의 단어만.
+ */
+export function reviewHref(songId?: string, extra = 0, jlpt?: JlptLevel, extraReview = 0): string {
   const q = new URLSearchParams();
   if (songId) q.set("song", songId);
   if (extra) q.set("extra", String(extra));
+  if (extraReview) q.set("more", String(extraReview));
   if (jlpt) q.set("level", jlpt);
   const s = q.toString();
   return s ? `/review?${s}` : "/review";

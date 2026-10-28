@@ -9,16 +9,20 @@ import { QueueSplit } from "@/components/QueueSplit";
 import { SongCover } from "@/components/SongCover";
 import {
   buildQueue,
-  clampDailyNew,
+  clampAmount,
   DAILY_NEW_MAX,
   DAILY_NEW_MIN,
   DAILY_NEW_OPTIONS,
+  DAILY_REVIEW_MAX,
+  DAILY_REVIEW_OPTIONS,
   EXTRA_NEW,
+  EXTRA_REVIEW,
   JLPT_LEVELS,
   type JlptLevel,
   KANJI_HREF,
-  remainingNew,
+  reviewedToday,
   reviewHref,
+  todayLimits,
   WEAK_HREF,
   WEAK_LAPSES,
   WEAK_LIMIT,
@@ -47,6 +51,7 @@ function Study() {
   const cards = useStore((s) => s.cards);
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
+  const dailyReview = useStore((s) => s.settings.dailyReview);
   const quizTypes = useStore((s) => s.settings.quizTypes);
   const autoSpeak = useStore((s) => s.settings.autoSpeak);
   const setSettings = useStore((s) => s.setSettings);
@@ -56,12 +61,13 @@ function Study() {
   const [level, setLevel] = useState<JlptLevel | undefined>();
 
   const newToday = newLog[dayKey(now)] ?? 0;
-  const newLimit = remainingNew(dailyNew, newLog, now);
+  const reviewsToday = reviewedToday(cards, now);
+  const { newLimit, reviewLimit } = todayLimits({ settings: { dailyNew, dailyReview }, newLog, cards }, now);
   const plan = useMemo(() => {
     const ready = order.filter((id) => songs[id]?.status === "ready" && songs[id].vocab.length > 0);
-    const count = (id?: string) => buildQueue(songs, order, cards, now, { songId: id, newLimit, jlpt: level });
+    const count = (id?: string) => buildQueue(songs, order, cards, now, { songId: id, newLimit, reviewLimit, jlpt: level });
     return { ready, all: count(), bySong: Object.fromEntries(ready.map((id) => [id, count(id)])) };
-  }, [songs, order, cards, now, newLimit, level]);
+  }, [songs, order, cards, now, newLimit, reviewLimit, level]);
   // 레벨마다 모은 단어 수 (그 레벨까지)
   const levelWords = useMemo(() => {
     const words = uniqueVocab(songs, order);
@@ -70,7 +76,7 @@ function Study() {
   const { ready } = plan;
   // 자주 틀린 단어: 기한과 상관없이 다시 본다
   const weak = useMemo(() => weakWords(songs, order, cards).slice(0, WEAK_LIMIT), [songs, order, cards]);
-  const weakPlan = { queue: weak, dueCount: weak.length, newCount: 0, freshTotal: 0 };
+  const weakPlan = { queue: weak, dueCount: weak.length, dueTotal: weak.length, newCount: 0, freshTotal: 0 };
   const isWeak = scope === "weak" && weak.length > 0;
   const songId = ready.includes(scope) ? scope : undefined;
   const current = isWeak ? weakPlan : songId ? plan.bySong[songId] : plan.all;
@@ -84,6 +90,8 @@ function Study() {
     return { total: keys.length, today: buildDeck(keys, cards, now, KANJI_NEW_PER_SESSION).queue.length };
   }, [kanjiInfo, songs, order, cards, now]);
   const extra = Math.max(0, newToday - dailyNew) + EXTRA_NEW;
+  const extraReview = dailyReview === null ? 0 : Math.max(0, reviewsToday - dailyReview) + EXTRA_REVIEW;
+  const reviewsLeft = current.dueTotal - current.dueCount;
 
   return (
     <div className="space-y-8 pt-5">
@@ -116,6 +124,16 @@ function Study() {
               className="btn-primary press mt-4 flex h-[54px] items-center justify-center text-[16px] font-bold"
             >
               새 단어 {Math.min(EXTRA_NEW, current.freshTotal)}개 더 학습하기
+            </Link>
+          </>
+        ) : reviewsLeft > 0 ? (
+          <>
+            <p className="mt-3 text-[14px] text-ink-2">오늘 복습할 몫을 다 했어요.</p>
+            <Link
+              href={reviewHref(songId, 0, level, extraReview)}
+              className="btn-primary press mt-4 flex h-[54px] items-center justify-center text-[16px] font-bold"
+            >
+              복습 {Math.min(EXTRA_REVIEW, reviewsLeft)}개 더 하기
             </Link>
           </>
         ) : (
@@ -211,11 +229,45 @@ function Study() {
 
       <section>
         <h2 className="text-[20px] font-bold">하루 새 단어</h2>
-        <p className="mt-1 mb-3 text-[14px] leading-[1.55] text-ink-3">다시 볼 단어는 이와 상관없이 모두 나와요.</p>
-        <DailyAmount value={dailyNew} onChange={(n) => setSettings({ dailyNew: n })} />
+        <p className="mt-1 mb-3 text-[14px] leading-[1.55] text-ink-3">다시 볼 단어는 아래 하루 복습에서 정해요.</p>
+        <AmountPicker
+          id="daily-new"
+          label="하루 새 단어 수"
+          value={dailyNew}
+          options={DAILY_NEW_OPTIONS}
+          max={DAILY_NEW_MAX}
+          onChange={(n) => n !== null && setSettings({ dailyNew: n })}
+        />
         <p className="mx-1 mt-2.5 text-[13px] text-ink-3">
           오늘 <b className="num font-semibold text-ink-2">{newToday}</b>개 배웠어요 ·{" "}
           <b className="num font-semibold text-ink-2">{newLimit}</b>개 남았어요
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-[20px] font-bold">하루 복습</h2>
+        <p className="mt-1 mb-3 text-[14px] leading-[1.55] break-keep text-ink-3">
+          다시 볼 단어가 많이 밀렸을 때 하루에 복습할 만큼만 정해요. 오래 밀린 단어부터 나와요.
+        </p>
+        <AmountPicker
+          id="daily-review"
+          label="하루 복습 수"
+          value={dailyReview}
+          options={DAILY_REVIEW_OPTIONS}
+          max={DAILY_REVIEW_MAX}
+          onChange={(n) => setSettings({ dailyReview: n })}
+        />
+        <p className="mx-1 mt-2.5 text-[13px] text-ink-3">
+          오늘 <b className="num font-semibold text-ink-2">{reviewsToday}</b>개 복습했어요 ·{" "}
+          {dailyReview === null ? (
+            <>
+              다시 볼 단어 <b className="num font-semibold text-ink-2">{plan.all.dueTotal}</b>개 모두 나와요
+            </>
+          ) : (
+            <>
+              <b className="num font-semibold text-ink-2">{reviewLimit}</b>개 남았어요
+            </>
+          )}
         </p>
       </section>
 
@@ -368,37 +420,50 @@ function DeckRow({
   );
 }
 
-/** 10 · 20 · 30 · 50 중에 고르거나 직접 넣는다. */
-function DailyAmount({ value, onChange }: { value: number; onChange: (n: number) => void }) {
-  const isPreset = (DAILY_NEW_OPTIONS as readonly number[]).includes(value);
-  const [custom, setCustom] = useState(!isPreset);
-  const [draft, setDraft] = useState(String(value));
+/** 몇 가지 중에 고르거나 직접 넣는다. null은 '모두'(정하지 않음). */
+function AmountPicker({
+  id,
+  label,
+  value,
+  options,
+  max,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: number | null;
+  options: readonly (number | null)[];
+  max: number;
+  onChange: (n: number | null) => void;
+}) {
+  const [custom, setCustom] = useState(!options.includes(value));
+  const [draft, setDraft] = useState(value === null ? "" : String(value));
 
   const commit = () => {
-    const n = clampDailyNew(draft);
-    if (n === null) return setDraft(String(value));
+    const n = clampAmount(draft, max);
+    if (n === null) return setDraft(value === null ? "" : String(value));
     setDraft(String(n));
     onChange(n);
   };
 
   return (
     <>
-      <div className="seg grid-cols-5" role="radiogroup" aria-label="하루 새 단어 수">
-        {DAILY_NEW_OPTIONS.map((n) => (
+      <div className="seg grid-cols-5" role="radiogroup" aria-label={label}>
+        {options.map((n) => (
           <button
-            key={n}
+            key={n ?? "all"}
             type="button"
             role="radio"
             aria-checked={!custom && value === n}
-            aria-label={`${n}개`}
+            aria-label={n === null ? "정하지 않고 모두" : `${n}개`}
             onClick={() => {
               setCustom(false);
-              setDraft(String(n));
+              setDraft(n === null ? "" : String(n));
               onChange(n);
             }}
             className="seg-item press num min-h-[38px] text-[15px] aria-checked:text-blue"
           >
-            {n}
+            {n ?? "모두"}
           </button>
         ))}
         <button
@@ -419,15 +484,15 @@ function DailyAmount({ value, onChange }: { value: number; onChange: (n: number)
             commit();
           }}
         >
-          <label htmlFor="daily-new" className="text-[15px] font-medium text-ink-2">
+          <label htmlFor={id} className="text-[15px] font-medium text-ink-2">
             하루
           </label>
           <input
-            id="daily-new"
+            id={id}
             type="number"
             inputMode="numeric"
             min={DAILY_NEW_MIN}
-            max={DAILY_NEW_MAX}
+            max={max}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}

@@ -20,7 +20,7 @@ import { cardOf } from "@/lib/cards";
 import { fileToCover } from "@/lib/image";
 import { lyricComprehension } from "@/lib/comprehension";
 import { isKoreanOnly } from "@/lib/lyrics";
-import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
+import { buildQueue, reviewHref, todayLimits } from "@/lib/review";
 import { isDue, memoryOf, progressOf } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Song } from "@/lib/types";
@@ -103,14 +103,18 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
   const total = song.vocab.length;
   const newLog = useStore((s) => s.newLog);
   const dailyNew = useStore((s) => s.settings.dailyNew);
+  const dailyReview = useStore((s) => s.settings.dailyReview);
   const songs = useStore((s) => s.songs);
   const order = useStore((s) => s.order);
   const [now] = useState(Date.now);
   const today = useMemo(
     () =>
-      buildQueue(songs, order, cards, now, { songId: song.id, newLimit: remainingNew(dailyNew, newLog, now) }).queue
+      buildQueue(songs, order, cards, now, {
+        songId: song.id,
+        ...todayLimits({ settings: { dailyNew, dailyReview }, newLog, cards }, now),
+      }).queue
         .length,
-    [songs, order, cards, now, song.id, dailyNew, newLog],
+    [songs, order, cards, now, song.id, dailyNew, dailyReview, newLog],
   );
 
   return (

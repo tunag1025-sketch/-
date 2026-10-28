@@ -7,6 +7,8 @@ export type Settings = {
   defaultLevel: Level;
   /** 하루에 새로 배울 단어 수 */
   dailyNew: number;
+  /** 하루에 복습할 카드 수. null이면 기한이 된 카드를 모두 */
+  dailyReview: number | null;
   /** 학습에 낼 문제 유형 */
   quizTypes: QuizType[];
   /** 설정에서 이미 보여 준 문제 유형 (새 유형만 골라 켜 주려고 둔다, withNewQuizTypes) */
@@ -19,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   furigana: true,
   defaultLevel: "N4",
   dailyNew: 20,
+  dailyReview: null,
   quizTypes: DEFAULT_QUIZ_TYPES,
   knownQuizTypes: QUIZ_TYPES.map((q) => q.type),
   autoSpeak: true,
