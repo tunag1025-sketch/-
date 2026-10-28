@@ -171,8 +171,8 @@ function Home() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[20px] font-bold">나의 기록</h2>
-          <Link href="/vocab" className="flex items-center text-[14px] font-medium text-ink-3">
-            단어장 <Icon name="chevron" className="size-4" />
+          <Link href="/stats" className="flex items-center text-[14px] font-medium text-ink-3">
+            학습 통계 <Icon name="chevron" className="size-4" />
           </Link>
         </div>
         <div className="card p-5">

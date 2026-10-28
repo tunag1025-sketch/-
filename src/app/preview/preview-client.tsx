@@ -15,6 +15,7 @@ const GROUPS: { title: string; dark?: boolean; screens: Screen[] }[] = [
       { path: "/?as=guest", title: "홈 · 로그인 전", note: "로그인 안내가 보여요" },
       { path: "/?splash=1", title: "시작 화면", note: "앱을 처음 열 때 잠깐 보여요" },
       { path: "/onboarding?as=guest", title: "첫 안내", note: "처음 연 사람에게 · 옆으로 넘겨요" },
+      { path: "/stats", title: "학습 통계", note: "복습 예보 · 학습 달력 · 기억 상태" },
     ],
   },
   {

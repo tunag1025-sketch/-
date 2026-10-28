@@ -32,6 +32,17 @@
   --top-glow: #e1edff;
   /* 진척도 막대의 단기기억 칸 */
   --short-term: #9dbcff;
+  /* 학습 달력: 답한 수가 많을수록 진한 파랑 (0 → 4), 칸 안 날짜 글자색 */
+  --heat-0: #f1f3f8;
+  --heat-1: #cfe0ff;
+  --heat-2: #8fb6ff;
+  --heat-3: #3d74ee;
+  --heat-4: #1a5ff2;
+  --heat-ink-0: var(--ink-3);
+  --heat-ink-1: var(--ink-2);
+  --heat-ink-2: var(--ink);
+  --heat-ink-3: #ffffff;
+  --heat-ink-4: #ffffff;
 }
 
 /* 어두운 테마 색. 기기 설정을 따르고, 화면 미리보기(?theme=)에서는 data-theme로 고를 수 있다. */
@@ -61,6 +72,12 @@
   --glass-edge: rgb(255 255 255 / 0.08);
   --top-glow: #15213f;
   --short-term: #3d5a9e;
+  --heat-0: #1d2130;
+  --heat-1: #1f3566;
+  --heat-2: #2c55b0;
+  --heat-3: #3a6ad8;
+  --heat-4: #8ab2ff;
+  --heat-ink-4: #0c0e15;
   color-scheme: dark;
 }
 

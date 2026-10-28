@@ -5,7 +5,12 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 
 const TABS: { href: string; label: string; icon: IconName; match: (p: string) => boolean }[] = [
-  { href: "/", label: "홈", icon: "home", match: (p) => p === "/" || (p.startsWith("/songs") && p !== "/songs/new") },
+  {
+    href: "/",
+    label: "홈",
+    icon: "home",
+    match: (p) => p === "/" || p === "/stats" || (p.startsWith("/songs") && p !== "/songs/new"),
+  },
   { href: "/study", label: "학습", icon: "cards", match: (p) => p.startsWith("/study") || p.startsWith("/review") },
   { href: "/vocab", label: "단어장", icon: "book", match: (p) => p.startsWith("/vocab") },
 ];
