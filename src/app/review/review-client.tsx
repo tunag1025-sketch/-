@@ -11,7 +11,7 @@ import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
 import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
 import { uniqueGrammar } from "@/lib/grammar";
-import { canSpeak, speak } from "@/lib/speech";
+import { canSpeak, speak, speechUnlocked } from "@/lib/speech";
 import {
   buildQueue,
   EXTRA_NEW,
@@ -324,9 +324,10 @@ function ReviewCard({
   const blanked = quiz.type === "blank" || quiz.type === "form";
   const formHint = quiz.type === "form" && !!meaning.explanation;
   const listen = (rate?: number) => speak(item.reading || item.word, rate);
-  // 듣기 문제는 카드가 뜨자마자 한 번 들려준다 (iPhone은 막힐 수 있어서 버튼도 둔다).
+  // 듣기 문제는 카드가 뜨자마자 한 번 들려준다. 이 페이지에서 소리가 난 적이 있을 때만:
+  // iPhone은 처음 한 번은 누른 순간에 읽어야 해서, 그 전에 자동으로 부르면 음성이 막혀 버린다.
   useEffect(() => {
-    if (quiz.type === "listen" && !look?.reveal) speak(item.reading || item.word);
+    if (quiz.type === "listen" && !look?.reveal && speechUnlocked()) speak(item.reading || item.word);
   }, [quiz.type, look?.reveal, item]);
 
   const revealed = quiz.type === "recall" ? flipped : picked !== null;
