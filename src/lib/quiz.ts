@@ -1,3 +1,4 @@
+import { type Conjugation, conjugate } from "./conjugate";
 import { kataToHira } from "./furigana";
 import { matchTokens } from "./highlight";
 import type { Song, VocabItem } from "./types";
@@ -36,6 +37,33 @@ export function blankAnswer(item: VocabItem, song: Song): string | null {
 }
 
 const hasKanji = (s: string) => /[㐀-鿿々]/.test(s);
+
+/**
+ * 활용형 문제: 가사에 나온 활용형(정답)과 같은 단어의 다른 활용형 보기 3개.
+ * 가사 속 형태가 활용형 목록에 있을 때만 낸다. 정답과 앞부분이 겹치는 형태(離れて / 離れても)는 둘 다 말이 되니 뺀다.
+ */
+export function formQuestion(
+  item: VocabItem,
+  song: Song,
+  rand: () => number = Math.random,
+): { answer: string; form: Conjugation; choices: string[] } | null {
+  const answer = blankAnswer(item, song);
+  if (!answer || answer === item.word) return null;
+  const all = conjugate(item);
+  const form = all.find((c) => c.form === answer);
+  if (!form) return null;
+  const others = all.filter((c) => !c.form.startsWith(answer) && !answer.startsWith(c.form)).map((c) => c.form);
+  if (others.length < CHOICES - 1) return null;
+  // 끝이 닮은 형태(眠らない · 眠れない)를 두 개, 나머지 하나는 아무거나
+  const tail = (f: string) => {
+    let n = 0;
+    while (n < f.length && n < answer.length && f.at(-1 - n) === answer.at(-1 - n)) n++;
+    return n;
+  };
+  const ranked = shuffle(others, rand).sort((a, b) => tail(b) - tail(a));
+  const rest = shuffle(ranked.slice(2), rand);
+  return { answer, form, choices: shuffle([answer, ranked[0], ranked[1], rest[0]], rand) };
+}
 
 /** 이 단어로 낼 수 있는 유형인지 */
 export function canAsk(type: QuizType, item: VocabItem, song: Song, poolSize: number): boolean {
