@@ -16,6 +16,7 @@ import { useAccount } from "@/lib/account";
 import { pickData, useStore } from "@/lib/store";
 import { clearLocalData, flush, type SyncStatus, syncNow, useSyncStatus } from "@/lib/sync";
 import { disablePush, enablePush, pushStatus, type PushStatus, pushSupport, sendTestPush } from "@/lib/push-client";
+import { checkSpeech, type SpeechCheck } from "@/lib/speech";
 
 type Invite = {
   code: string;
@@ -41,6 +42,7 @@ function Settings() {
       {enabled && user && <Reminders />}
       {user?.role === "admin" && <Invites />}
       <Backup />
+      <SpeechCheckSection />
       <Link href="/onboarding" className="mx-auto flex w-fit items-center gap-1 text-[14px] font-medium text-ink-3">
         Utango 소개 다시 보기 <Icon name="chevron" className="size-4" />
       </Link>
@@ -394,6 +396,63 @@ function Invites() {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const SPEECH_RESULT: Record<SpeechCheck["result"], string> = {
+  started: "소리를 냈어요. 들리지 않았다면 볼륨과 무음 모드를 확인해 주세요.",
+  error: "기기가 읽기를 거절했어요.",
+  silent: "기기가 읽기를 시작하지 않았어요.",
+  unsupported: "이 브라우저는 발음 듣기를 지원하지 않아요.",
+};
+
+/** 발음이 안 들릴 때: 한 문장을 읽어 보고 기기 상태를 보여 준다. */
+function SpeechCheckSection() {
+  const [busy, setBusy] = useState(false);
+  const [check, setCheck] = useState<SpeechCheck | null>(null);
+
+  return (
+    <section>
+      <SectionLabel>발음 점검</SectionLabel>
+      <div className="card p-4">
+        <p className="text-[13px] leading-relaxed text-ink-3">발음이 들리지 않으면 눌러 보세요. 짧은 일본어 문장을 읽어요.</p>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            // 누른 순간에 읽어야 iPhone에서 소리가 난다.
+            void checkSpeech().then((r) => {
+              setCheck(r);
+              setBusy(false);
+            });
+          }}
+          className="btn-ghost press mt-3 flex h-[52px] w-full items-center justify-center gap-1.5 text-[15px] font-semibold disabled:opacity-60"
+        >
+          {busy ? <Spinner className="size-4" /> : <Icon name="volume" className="size-[18px]" />} 발음 들어 보기
+        </button>
+        {check && (
+          <div className="mt-3 space-y-2 rounded-2xl bg-muted px-4 py-3 text-[13px] leading-relaxed text-ink-2" role="status">
+            <p className="font-semibold text-ink">
+              {SPEECH_RESULT[check.result]}
+              {check.error && <span className="font-normal text-ink-3"> ({check.error})</span>}
+            </p>
+            {check.result !== "unsupported" && (
+              <p className="text-ink-3">
+                음성 {check.voices}개 · 일본어 {check.japanese.length}개 · 쓰는 음성: {check.using}
+              </p>
+            )}
+            {check.result !== "started" && check.result !== "unsupported" && (
+              <ul className="list-disc space-y-0.5 pl-4">
+                <li>무음 모드를 끄고 볼륨을 올려 보세요.</li>
+                <li>iPhone: 설정 › 손쉬운 사용 › 읽기 및 말하기 › 음성 › 일본어에서 음성을 받아 두세요.</li>
+                <li>앱을 완전히 닫았다가 다시 열어 보세요.</li>
+              </ul>
+            )}
+          </div>
         )}
       </div>
     </section>

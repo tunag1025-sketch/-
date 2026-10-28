@@ -84,4 +84,38 @@ describe("speak", () => {
     vi.advanceTimersByTime(200);
     expect(synth.speak).toHaveBeenCalledTimes(2);
   });
+
+  it("leaves the voice to the device on iPhone, picks an installed one elsewhere, and plays in silent mode", async () => {
+    const ja = { name: "Eddy", lang: "ja-JP", localService: true, default: false };
+    synth.getVoices = () => [ja] as never;
+    const session = { type: "auto" };
+    vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", audioSession: session });
+    const { speak } = await import("../speech");
+    speak("ほし");
+    expect((synth.speak.mock.calls[0][0] as { voice?: unknown }).voice).toBeUndefined();
+    expect(session.type).toBe("playback");
+
+    vi.resetModules();
+    vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (Linux; Android 14) Chrome/130" });
+    const desktop = await import("../speech");
+    synth.queue = [];
+    synth.pending = false;
+    desktop.speak("まど");
+    expect((synth.speak.mock.calls[1][0] as { voice?: unknown }).voice).toBe(ja);
+  });
+
+  it("reports whether the check sentence started", async () => {
+    const { checkSpeech } = await import("../speech");
+    const started = checkSpeech();
+    synth.start();
+    expect((await started).result).toBe("started");
+
+    vi.resetModules();
+    synth = new FakeSynth();
+    vi.stubGlobal("window", { speechSynthesis: synth });
+    const again = await import("../speech");
+    const silent = again.checkSpeech();
+    vi.advanceTimersByTime(2600);
+    expect((await silent).result).toBe("silent");
+  });
 });

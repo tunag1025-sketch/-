@@ -4,13 +4,32 @@ import { useSyncExternalStore } from "react";
 
 const supported = () => typeof window !== "undefined" && "speechSynthesis" in window;
 
-/** 일본어 음성: 기기에 깔린(localService) 기본 음성을 먼저. 안 받아 둔 음성을 고르면 iPhone에서 소리가 안 난다. */
-function japaneseVoice(): SpeechSynthesisVoice | undefined {
-  const ja = window.speechSynthesis
-    .getVoices()
-    .filter((v) => v.lang === "ja-JP" || v.lang.toLowerCase().startsWith("ja"));
+/** iPhone·iPad (iPadOS는 Mac처럼 보이기도 한다) */
+const appleMobile = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+const japaneseVoices = () =>
+  window.speechSynthesis.getVoices().filter((v) => v.lang === "ja-JP" || v.lang.toLowerCase().startsWith("ja"));
+
+/**
+ * 읽을 음성. iPhone·iPad는 고르지 않고 기기의 기본 일본어 음성에 맡긴다:
+ * iOS 18은 받아 두지 않았거나 쓸 수 없는 음성(Eloquence 등)도 목록에 보여 줘서, 그걸 고르면 소리가 안 난다.
+ * 다른 기기는 깔린(localService) 기본 음성을 먼저 고른다.
+ */
+function voiceFor(): SpeechSynthesisVoice | undefined {
+  if (appleMobile()) return undefined;
   const rank = (v: SpeechSynthesisVoice) => (v.localService ? 0 : 2) + (v.default ? 0 : 1);
-  return ja.sort((a, b) => rank(a) - rank(b))[0];
+  return japaneseVoices().sort((a, b) => rank(a) - rank(b))[0];
+}
+
+/** 무음 모드에서도 동영상처럼 소리가 나게 한다 (iOS 16.4+ Safari의 Audio Session). 단어를 누른 건 듣겠다는 뜻이라서. */
+function playEvenWhenSilent() {
+  const nav = navigator as Navigator & { audioSession?: { type: string } };
+  try {
+    if (nav.audioSession && nav.audioSession.type !== "playback") nav.audioSession.type = "playback";
+  } catch {
+    // 지원하지 않으면 그대로 둔다.
+  }
 }
 
 function subscribe(onChange: () => void) {
@@ -26,7 +45,7 @@ function subscribe(onChange: () => void) {
 export function canSpeak(): boolean {
   if (!supported()) return false;
   const voices = window.speechSynthesis.getVoices();
-  return voices.length === 0 || japaneseVoice() !== undefined;
+  return voices.length === 0 || japaneseVoices().length > 0;
 }
 
 export function useCanSpeak(): boolean {
@@ -44,23 +63,32 @@ let unlocked = false;
 /** 누르지 않아도 읽을 수 있는지 (자동으로 들려주기 전에 본다) */
 export const speechUnlocked = () => unlocked;
 
+type SpeechEvent = { type: "start" | "end" | "error"; error?: string };
+
 /** 일본어 문장을 소리 내어 읽는다. 읽던 것은 멈춘다. 버튼을 누른 순간에 부르는 게 가장 확실하다. */
-export function speak(text: string, rate = 0.9) {
+export function speak(text: string, rate = 0.9, onEvent?: (e: SpeechEvent) => void) {
   if (!supported() || !text.trim()) return;
   const synth = window.speechSynthesis;
+  playEvenWhenSilent();
   const start = () => {
     timer = null;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "ja-JP";
     u.rate = rate;
-    const voice = japaneseVoice();
+    const voice = voiceFor();
     if (voice) u.voice = voice;
     u.onstart = () => {
       unlocked = true;
       if (current === u) started = true;
+      onEvent?.({ type: "start" });
     };
-    u.onend = u.onerror = () => {
+    u.onend = () => {
       if (current === u) current = null;
+      onEvent?.({ type: "end" });
+    };
+    u.onerror = (e) => {
+      if (current === u) current = null;
+      onEvent?.({ type: "error", error: e.error });
     };
     current = u;
     started = false;
@@ -91,4 +119,38 @@ export function speak(text: string, rate = 0.9) {
     current = null;
     start();
   }
+}
+
+export type SpeechCheck = {
+  /** 기기가 알려 준 음성 수 / 그중 일본어 음성 이름 */
+  voices: number;
+  japanese: string[];
+  /** 이 앱이 쓰는 음성 */
+  using: string;
+  result: "started" | "error" | "silent" | "unsupported";
+  error?: string;
+};
+
+/** 발음 점검: 짧은 문장을 읽어 보고 소리를 시작했는지 알려 준다. 버튼을 누른 순간에 불러야 한다. */
+export function checkSpeech(): Promise<SpeechCheck> {
+  if (!supported()) return Promise.resolve({ voices: 0, japanese: [], using: "", result: "unsupported" });
+  const voices = window.speechSynthesis.getVoices();
+  const base = {
+    voices: voices.length,
+    japanese: japaneseVoices().map((v) => v.name),
+    using: voiceFor()?.name ?? "기기 기본 일본어 음성",
+  };
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (r: Pick<SpeechCheck, "result" | "error">) => {
+      if (done) return;
+      done = true;
+      resolve({ ...base, ...r });
+    };
+    speak("こんにちは。日本語の発音です。", 0.9, (e) => {
+      if (e.type === "start") finish({ result: "started" });
+      if (e.type === "error") finish({ result: "error", error: e.error });
+    });
+    setTimeout(() => finish({ result: "silent" }), 2500);
+  });
 }
