@@ -11,7 +11,7 @@ import { VocabDetail, WordHeading } from "@/components/VocabDetail";
 import { fetchExplanation } from "@/lib/api-client";
 import { cardKey, cardOf, uniqueVocab } from "@/lib/cards";
 import { uniqueGrammar } from "@/lib/grammar";
-import { speak } from "@/lib/speech";
+import { canSpeak, speak } from "@/lib/speech";
 import {
   buildQueue,
   EXTRA_NEW,
@@ -23,7 +23,17 @@ import {
   weakWords,
 } from "@/lib/review";
 import { PREVIEW } from "@/lib/preview";
-import { blankAnswer, canAsk, makeChoices, pickQuizType, QUIZ_TYPES, type QuizType, readingMatches } from "@/lib/quiz";
+import { type Conjugation } from "@/lib/conjugate";
+import {
+  blankAnswer,
+  canAsk,
+  formQuestion,
+  makeChoices,
+  pickQuizType,
+  QUIZ_TYPES,
+  type QuizType,
+  readingMatches,
+} from "@/lib/quiz";
 import { memoryOf, newCard } from "@/lib/srs";
 import { useStore } from "@/lib/store";
 import type { Grade, Song, VocabItem } from "@/lib/types";
@@ -216,27 +226,43 @@ function ReviewSession({
 
 type Quiz =
   | { type: "recall" | "reading" }
-  | { type: "choice" | "blank"; answer: string; choices: string[] };
+  | { type: "choice" | "listen" | "blank"; answer: string; choices: string[] }
+  | { type: "form"; answer: string; choices: string[]; form: Conjugation };
 
 function makeQuiz(item: VocabItem, song: Song, pool: VocabItem[], enabled: QuizType[], force?: QuizType): Quiz {
   const isNew = !cardOf(useStore.getState().cards, item);
+  // 소리를 낼 수 없는 기기에서는 듣기 문제를 내지 않는다.
+  const usable = canSpeak() ? enabled : enabled.filter((t) => t !== "listen");
   const type =
-    force && canAsk(force, item, song, pool.length) ? force : pickQuizType(enabled, item, song, pool.length, isNew);
+    force && canAsk(force, item, song, pool.length) ? force : pickQuizType(usable, item, song, pool.length, isNew);
   if (type === "choice") {
     return { type, answer: item.word, choices: makeChoices(item, item.word, pool, (v) => v.word) };
+  }
+  if (type === "listen") {
+    return { type, answer: item.meaning, choices: makeChoices(item, item.meaning, pool, (v) => v.meaning) };
   }
   if (type === "blank") {
     const answer = blankAnswer(item, song)!;
     return { type, answer, choices: makeChoices(item, answer, pool, (v) => v.formInSong || v.word) };
   }
+  if (type === "form") return { type, ...formQuestion(item, song)! };
   return { type };
 }
 
 const QUESTION: Record<QuizType, string> = {
   recall: "읽는 법과 뜻을 떠올려 보세요",
   choice: "이 뜻의 단어는?",
+  listen: "들리는 단어의 뜻은?",
   blank: "빈칸에 들어갈 말은?",
+  form: "빈칸에 맞게 바꾸면?",
   reading: "읽는 법을 히라가나로 써 보세요",
+};
+
+// 보기 글자: 듣기 문제는 한국어 뜻, 빈칸·활용형은 가사 속 일본어, 단어 고르기는 사전형
+const CHOICE_TEXT: Partial<Record<QuizType, string>> = {
+  listen: "text-[16px] leading-snug",
+  blank: "font-jp text-[20px]",
+  form: "font-jp text-[20px]",
 };
 
 function ReviewCard({
@@ -285,6 +311,14 @@ function ReviewCard({
   const contextLine = item.lines.find((n) => song.lines[n]);
   // 앞면을 보는 동안 이 줄의 해석을 미리 받아 둔다.
   const meaning = useLineExplanation(song, contextLine);
+  // 가사에 빈칸을 두는 문제. 활용형 문제는 줄 해석을 힌트로 같이 보여 준다.
+  const blanked = quiz.type === "blank" || quiz.type === "form";
+  const formHint = quiz.type === "form" && !!meaning.explanation;
+  const listen = (rate?: number) => speak(item.reading || item.word, rate);
+  // 듣기 문제는 카드가 뜨자마자 한 번 들려준다 (iPhone은 막힐 수 있어서 버튼도 둔다).
+  useEffect(() => {
+    if (quiz.type === "listen" && !look?.reveal) speak(item.reading || item.word);
+  }, [quiz.type, look?.reveal, item]);
 
   const revealed = quiz.type === "recall" ? flipped : picked !== null;
   const correct =
@@ -303,7 +337,7 @@ function ReviewCard({
   }, [next, nextLine]);
 
   // 문제 유형마다 앞면에서 가사 줄을 보여 줄지(단어 고르기는 가사에 답이 있어 숨긴다)
-  const showLine = contextLine !== undefined && (revealed || quiz.type === "recall" || quiz.type === "blank");
+  const showLine = contextLine !== undefined && (revealed || quiz.type === "recall" || blanked);
 
   const memory = memoryOf(card);
   const memoryLabel = memory === "long" ? "장기기억" : memory === "short" ? "단기기억" : "새 단어";
@@ -320,22 +354,25 @@ function ReviewCard({
           {song.title}
         </p>
         {showLine && (
-          <div className={`iris mt-3 rounded-[18px] px-4 ${revealed ? "pt-1 pb-3" : "py-1"}`}>
+          <div className={`iris mt-3 rounded-[18px] px-4 ${revealed || formHint ? "pt-1 pb-3" : "py-1"}`}>
             <p
-              className={`font-jp lyric leading-[2.3] ${
-                quiz.type === "blank" && !revealed ? "text-center text-[20px]" : "text-[18px]"
-              }`}
+              className={`font-jp lyric leading-[2.3] ${blanked && !revealed ? "text-center text-[20px]" : "text-[18px]"}`}
             >
               <LyricLineView
                 line={song.lines[contextLine]}
                 index={contextLine}
                 vocab={[item]}
                 focusId={item.id}
-                blank={quiz.type === "blank" && !revealed}
+                blank={blanked && !revealed}
                 showFocusReading={revealed}
                 furigana={furigana}
               />
             </p>
+            {!revealed && formHint && (
+              <p className="border-t border-surface pt-2 text-center text-[15px] leading-normal font-medium text-ink-2">
+                {meaning.explanation?.translation}
+              </p>
+            )}
             {revealed && (
               <div className="border-t border-surface pt-2 text-[15px] leading-normal">
                 {meaning.explanation ? (
@@ -395,6 +432,17 @@ function ReviewCard({
                   </p>
                 </>
               )}
+              {/* 활용형 문제: 사전형이 어떻게 바뀌었는지 */}
+              {quiz.type === "form" && (
+                <p className="mx-auto mt-4 w-fit max-w-full rounded-2xl bg-muted px-4 py-2.5 text-[14px] leading-normal">
+                  <span className="font-jp block text-[16px] font-semibold">
+                    {item.word} → {quiz.answer}
+                  </span>
+                  <span className="block text-ink-2">
+                    {quiz.form.label} · {quiz.form.meaning}
+                  </span>
+                </p>
+              )}
             </div>
             {quiz.type !== "choice" && item.note && (
               <p className="mt-4 border-t border-line pt-3.5 text-[14px] leading-[1.6] text-pretty text-ink-2">{item.note}</p>
@@ -410,6 +458,27 @@ function ReviewCard({
           <div className="mt-6 text-center">
             <p className="text-[14px] font-medium text-ink-3">{QUESTION.blank}</p>
             <p className="mt-2 text-[18px] font-bold">{item.meaning}</p>
+          </div>
+        ) : quiz.type === "form" ? (
+          <div className="mt-6 text-center">
+            <p className="text-[14px] font-medium text-ink-3">{QUESTION.form}</p>
+            <p className="font-jp mt-1.5 text-[28px] leading-snug font-bold">{item.word}</p>
+            <p className="mt-1 text-[14px] text-ink-3">{item.meaning}</p>
+          </div>
+        ) : quiz.type === "listen" ? (
+          <div className="mt-8 flex flex-col items-center text-center">
+            <p className="text-[14px] font-medium text-ink-3">{QUESTION.listen}</p>
+            <button
+              type="button"
+              onClick={() => listen()}
+              aria-label="다시 듣기"
+              className="btn-primary press mt-4 grid size-20 place-items-center rounded-full"
+            >
+              <Icon name="volume" className="size-9" />
+            </button>
+            <button type="button" onClick={() => listen(0.6)} className="press mt-3 px-3 py-1 text-[14px] font-semibold text-blue">
+              천천히 듣기
+            </button>
           </div>
         ) : (
           <div className="mt-12 text-center">
@@ -466,9 +535,9 @@ function ReviewCard({
                   setPicked(c);
                   sayWord();
                 }}
-                className={`press font-jp flex items-center justify-center gap-1.5 rounded-[22px] px-3 font-bold transition-colors ${
-                  picked === null ? "h-[76px]" : "h-16"
-                } ${quiz.type === "blank" ? "text-[20px]" : "text-[22px]"} ${
+                className={`press flex items-center justify-center gap-1.5 rounded-[22px] px-3 text-center font-bold break-keep transition-colors ${
+                  picked === null ? "min-h-[76px]" : "min-h-16"
+                } ${CHOICE_TEXT[quiz.type] ?? "font-jp text-[22px]"} ${
                   look === "right"
                     ? "border-[1.5px] border-blue bg-blue-soft text-blue"
                     : look === "wrong"

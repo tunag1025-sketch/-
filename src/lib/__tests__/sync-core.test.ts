@@ -81,6 +81,13 @@ describe("applyEntities", () => {
     expect(next.order).toEqual(["a", "b"]);
   });
 
+  it("turns on new quiz types in settings pulled from an older app", () => {
+    const oldApp = { furigana: true, defaultLevel: "N4", dailyNew: 10, quizTypes: ["recall", "choice"], autoSpeak: true };
+    const next = applyEntities(base, [{ kind: "settings", key: "settings", data: oldApp, updatedAt: 7 }]);
+    expect(next.settings.dailyNew).toBe(10);
+    expect(next.settings.quizTypes).toEqual(["recall", "choice", "listen", "form"]);
+  });
+
   it("removes a song deleted elsewhere with its explanations but keeps word cards", () => {
     const state: SyncState = { ...base, songs: { a: song("a", 5) }, cards: { 一: card(5) }, explanations: { "a:0": { translation: "", breakdown: [], notes: "" } } };
     const next = applyEntities(state, [{ kind: "song", key: "a", data: null, updatedAt: 6, deleted: true }]);

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { migrateCards } from "./cards";
+import { withNewQuizTypes } from "./quiz";
 import { PREVIEW, previewStorage } from "./preview";
 import { LEARNED_INTERVAL_DAYS, newCard, schedule } from "./srs";
 import { dayKey } from "./stats";
@@ -148,9 +149,11 @@ export const useStore = create<State>()(
         return state as State;
       },
       // 설정에 새 항목이 생겨도 기본값이 채워지게 한 단계 더 합친다.
+      // 새로 생긴 문제 유형도 켜 준다 (기본값의 knownQuizTypes가 덮지 않게 저장된 값을 쓴다).
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<State>;
-        return { ...current, ...p, settings: { ...current.settings, ...p.settings } };
+        const settings = { ...current.settings, ...p.settings, knownQuizTypes: p.settings?.knownQuizTypes };
+        return { ...current, ...p, settings: p.settings ? withNewQuizTypes(settings) : current.settings };
       },
       // 서버 렌더와 첫 클라이언트 렌더를 맞추기 위해 마운트 후에 직접 rehydrate 한다.
       skipHydration: true,

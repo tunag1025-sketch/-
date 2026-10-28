@@ -1,5 +1,5 @@
 import { cardTime, putCard } from "./cards";
-import { DEFAULT_QUIZ_TYPES, type QuizType } from "./quiz";
+import { DEFAULT_QUIZ_TYPES, QUIZ_TYPES, type QuizType } from "./quiz";
 import type { CardState, Level, LineExplanation, Song } from "./types";
 
 export type Settings = {
@@ -9,6 +9,8 @@ export type Settings = {
   dailyNew: number;
   /** 학습에 낼 문제 유형 */
   quizTypes: QuizType[];
+  /** 설정에서 이미 보여 준 문제 유형 (새 유형만 골라 켜 주려고 둔다, withNewQuizTypes) */
+  knownQuizTypes?: QuizType[];
   /** 뜻을 볼 때 발음을 자동으로 들려준다 */
   autoSpeak: boolean;
 };
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultLevel: "N4",
   dailyNew: 20,
   quizTypes: DEFAULT_QUIZ_TYPES,
+  knownQuizTypes: QUIZ_TYPES.map((q) => q.type),
   autoSpeak: true,
 };
 

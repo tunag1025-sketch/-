@@ -19,7 +19,7 @@ function subscribe(onChange: () => void) {
  * 일본어로 읽어 줄 수 있는지.
  * 음성 목록을 아직 못 받았으면(일부 브라우저는 늦게 준다) 일단 된다고 보고, 받았는데 일본어가 없으면 숨긴다.
  */
-function canSpeak(): boolean {
+export function canSpeak(): boolean {
   if (!supported()) return false;
   const voices = window.speechSynthesis.getVoices();
   return voices.length === 0 || japaneseVoice() !== undefined;

@@ -1,5 +1,6 @@
 import { cardTime, putCard } from "./cards";
 import { type Settings, songTime, type UserData } from "./data";
+import { withNewQuizTypes } from "./quiz";
 import type { CardState, LineExplanation, Song } from "./types";
 
 /**
@@ -128,7 +129,9 @@ export function applyEntities(state: SyncState, entities: Entity[]): SyncState {
       const day = e.key.slice(2);
       log[day] = Math.max(log[day] ?? 0, (e.data as { count: number }).count);
     } else if (e.kind === "settings" && e.updatedAt > settingsUpdatedAt) {
-      settings = { ...settings, ...(e.data as Partial<Settings>) };
+      // 예전 앱이 올린 설정에는 새 문제 유형이 없으니 켜 준다.
+      const data = e.data as Partial<Settings>;
+      settings = withNewQuizTypes({ ...settings, ...data, knownQuizTypes: data.knownQuizTypes });
       settingsUpdatedAt = e.updatedAt;
     }
   }

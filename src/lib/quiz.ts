@@ -7,19 +7,36 @@ import type { Song, VocabItem } from "./types";
  * 문제 유형
  *  recall  단어를 보고 뜻 떠올리기 (카드 뒤집기)
  *  choice  뜻을 보고 단어 고르기
+ *  listen  발음을 듣고 뜻 고르기
  *  blank   가사 빈칸에 들어갈 말 고르기
+ *  form    사전형을 가사에 나온 활용형으로 바꾸기 (동사·형용사)
  *  reading 읽는 법 쓰기
  */
-export type QuizType = "recall" | "choice" | "blank" | "reading";
+export type QuizType = "recall" | "choice" | "listen" | "blank" | "form" | "reading";
 
 export const QUIZ_TYPES: { type: QuizType; label: string; hint: string }[] = [
   { type: "recall", label: "뜻 떠올리기", hint: "단어를 보고 뜻을 떠올린 뒤 뒤집어 봐요" },
   { type: "choice", label: "단어 고르기", hint: "뜻을 보고 4개 중에 골라요" },
+  { type: "listen", label: "듣고 뜻 고르기", hint: "발음을 듣고 뜻을 골라요 · 소리를 켜 주세요" },
   { type: "blank", label: "가사 빈칸", hint: "가사에서 빈칸에 들어갈 말을 골라요" },
+  { type: "form", label: "활용형 고르기", hint: "동사·형용사가 가사에서 어떤 꼴로 바뀌었는지 골라요" },
   { type: "reading", label: "읽는 법 쓰기", hint: "히라가나로 써요 · 일본어 자판 필요" },
 ];
 
-export const DEFAULT_QUIZ_TYPES: QuizType[] = ["recall", "choice", "blank"];
+export const DEFAULT_QUIZ_TYPES: QuizType[] = ["recall", "choice", "listen", "blank", "form"];
+
+/**
+ * 새로 생긴 유형 중 기본으로 켜는 것은 예전 설정에도 켜 준다.
+ * knownQuizTypes(사용자에게 이미 보여 준 유형)에 없는 것만 더해서, 사용자가 끈 유형은 다시 켜지 않는다.
+ * knownQuizTypes가 없던 때의 유형: 뜻 떠올리기 · 단어 고르기 · 가사 빈칸 · 읽는 법 쓰기
+ */
+export function withNewQuizTypes<S extends { quizTypes: QuizType[]; knownQuizTypes?: QuizType[] }>(settings: S): S {
+  const known = settings.knownQuizTypes ?? ["recall", "choice", "blank", "reading"];
+  const all = QUIZ_TYPES.map((q) => q.type);
+  if (all.every((t) => known.includes(t))) return settings;
+  const added = DEFAULT_QUIZ_TYPES.filter((t) => !known.includes(t) && !settings.quizTypes.includes(t));
+  return { ...settings, quizTypes: [...settings.quizTypes, ...added], knownQuizTypes: all };
+}
 
 const CHOICES = 4;
 
@@ -72,6 +89,10 @@ export function canAsk(type: QuizType, item: VocabItem, song: Song, poolSize: nu
       return true;
     case "choice":
       return poolSize >= CHOICES;
+    case "listen":
+      return poolSize >= CHOICES && !!item.reading;
+    case "form":
+      return formQuestion(item, song) !== null;
     case "blank":
       return poolSize >= CHOICES && blankAnswer(item, song) !== null;
     case "reading":
