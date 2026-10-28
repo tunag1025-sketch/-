@@ -1,11 +1,13 @@
 "use client";
 
 import { matchTokens } from "@/lib/highlight";
+import type { Memory } from "@/lib/srs";
 import type { LyricLine, VocabItem } from "@/lib/types";
 import { Ruby } from "./Ruby";
 
 /**
  * 가사 한 줄을 후리가나와 함께 그린다. 단어장에 있는 단어는 형광펜으로 칠하고 누를 수 있다.
+ * memory를 주면 기억 상태에 따라 칠한다: 장기기억은 진한 형광펜, 단기기억은 가는 밑줄, 학습 전은 점선.
  * focusId를 주면 그 단어만 강조하고 읽기를 가린다(복습 카드 앞면).
  */
 export function LyricLineView({
@@ -13,6 +15,7 @@ export function LyricLineView({
   index,
   vocab,
   onWord,
+  memory,
   focusId,
   blank = false,
   showFocusReading = false,
@@ -22,6 +25,8 @@ export function LyricLineView({
   index: number;
   vocab: VocabItem[];
   onWord?: (vocabId: string) => void;
+  /** 단어마다 기억 상태 (노래 가사 화면) */
+  memory?: (vocabId: string) => Memory;
   focusId?: string;
   /** focusId 단어를 빈칸으로 가린다 (가사 빈칸 문제) */
   blank?: boolean;
@@ -70,7 +75,13 @@ export function LyricLineView({
           );
         }
         return (
-          <button key={gi} type="button" onClick={() => onWord?.(group.id!)} className="vocab-word">
+          <button
+            key={gi}
+            type="button"
+            onClick={() => onWord?.(group.id!)}
+            className="vocab-word"
+            data-memory={memory?.(group.id)}
+          >
             {content}
           </button>
         );

@@ -285,6 +285,22 @@ rt {
   text-decoration-skip-ink: none;
 }
 
+/* 가사 화면에서 기억 상태별로: 단기기억은 가는 밑줄, 학습 전은 점선 (장기기억은 위의 형광펜 그대로) */
+.vocab-word[data-memory="short"] {
+  font-weight: 500;
+  text-decoration-color: var(--short-term);
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.14em;
+}
+.vocab-word[data-memory="none"] {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration-style: dotted;
+  text-decoration-color: color-mix(in srgb, var(--ink-3) 65%, transparent);
+  text-decoration-thickness: 0.09em;
+  text-underline-offset: 0.2em;
+}
+
 /* 복습 카드에서 가린 단어 */
 .focus-word {
   background: var(--btn);

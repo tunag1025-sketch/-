@@ -18,6 +18,7 @@ import { autoCover, findArtwork, startAnalysis, useInFlight } from "@/lib/api-cl
 import type { Artwork } from "@/lib/artwork";
 import { cardOf } from "@/lib/cards";
 import { fileToCover } from "@/lib/image";
+import { lyricComprehension } from "@/lib/comprehension";
 import { isKoreanOnly } from "@/lib/lyrics";
 import { buildQueue, remainingNew, reviewHref } from "@/lib/review";
 import { isDue, memoryOf, progressOf } from "@/lib/srs";
@@ -89,6 +90,15 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
 
   const word = openWord ? song.vocab.find((v) => v.id === openWord) : undefined;
   const memory = progressOf(song.vocab, cards);
+  // 가사 이해도: 가사에 나오는 단어 중 기억한 비율, 모르는 단어가 없는 줄
+  const memoryById = useMemo(
+    () => new Map(song.vocab.map((v) => [v.id, memoryOf(cardOf(cards, v))])),
+    [song.vocab, cards],
+  );
+  const reading = useMemo(
+    () => lyricComprehension(song, (v) => memoryById.get(v.id) ?? "none"),
+    [song, memoryById],
+  );
   const koreanLines = song.lines.filter((l) => isKoreanOnly(l.text)).length;
   const total = song.vocab.length;
   const newLog = useStore((s) => s.newLog);
@@ -145,15 +155,40 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
 
       {song.status === "ready" && total > 0 && (
         <div className="card mt-5 px-[18px] pt-[18px] pb-4">
-          <div className="flex items-baseline justify-between">
-            <p className="text-[13px] font-semibold text-ink-2">기억한 단어</p>
-            <p className="text-[13px] text-ink-3">
-              <b className="num text-[20px] font-semibold tracking-[-0.02em] text-ink">{memory.long + memory.short}</b> /{" "}
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[13px] font-semibold text-ink-2">가사 이해도</p>
+              <p className="mt-0.5 flex items-baseline gap-0.5">
+                <span className="num text-[34px] leading-none font-medium tracking-[-0.04em]">{reading.percent}</span>
+                <span className="text-[16px] font-bold text-ink-2">%</span>
+              </p>
+            </div>
+            <p className="pb-0.5 text-[13px] text-ink-3">
+              기억한 단어{" "}
+              <b className="num text-[17px] font-semibold tracking-[-0.02em] text-ink">{memory.long + memory.short}</b> /{" "}
               <span className="num">{total}</span>
             </p>
           </div>
-          <MemoryBar total={total} long={memory.long} short={memory.short} className="mt-2.5 h-2" />
+          <MemoryBar total={total} long={memory.long} short={memory.short} className="mt-3 h-2" />
           <MemoryLegend className="mt-2" counts={{ long: memory.long, short: memory.short }} />
+          {reading.lines > 0 && (
+            <p className="mt-3 flex items-center gap-1.5 border-t border-line pt-3 text-[13px] text-ink-2">
+              {reading.readable === reading.lines ? (
+                <>
+                  <Icon name="sparkle" className="size-4 shrink-0 text-blue" />
+                  가사의 모든 줄을 모르는 단어 없이 읽을 수 있어요
+                </>
+              ) : (
+                <>
+                  <Icon name="music" className="size-4 shrink-0 text-ink-3" />
+                  <span>
+                    가사 <span className="num">{reading.lines}</span>줄 중{" "}
+                    <b className="num font-semibold text-ink">{reading.readable}</b>줄은 모르는 단어가 없어요
+                  </span>
+                </>
+              )}
+            </p>
+          )}
           <Link
             href={reviewHref(song.id)}
             className="btn-primary press mt-4 flex h-[52px] items-center justify-center gap-2 text-[15px] font-bold"
@@ -220,10 +255,24 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
       {tab === "lyrics" && (
         <div className="card px-2.5 pt-2.5 pb-3">
           {song.status === "ready" && total > 0 && (
-            <p className="mx-2 mt-1 mb-1.5 flex flex-wrap items-center gap-1.5 text-[12px] leading-normal text-ink-3">
-              <span className="h-2 w-[22px] shrink-0 rounded-sm bg-[var(--mark)]" aria-hidden />
-              단어를 누르면 뜻, <Icon name="sparkle" className="size-[13px]" />를 누르면 줄 해설
-            </p>
+            <div className="mx-2 mt-1 mb-1.5 space-y-1 text-[12px] leading-normal text-ink-3">
+              {/* 가사 속 단어 표시와 같은 모양으로 보여 준다 */}
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="단어 표시">
+                <span className="vocab-word">장기기억</span>
+                <span className="vocab-word" data-memory="short">
+                  단기기억
+                </span>
+                <span className="vocab-word" data-memory="none">
+                  학습 전
+                </span>
+              </p>
+              <p className="flex flex-wrap items-center gap-1">
+                단어를 누르면 뜻,
+                <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                  <Icon name="sparkle" className="size-[13px]" />를 누르면 줄 해설
+                </span>
+              </p>
+            </div>
           )}
           {koreanLines > 0 && (
             <p className="mx-2 mb-1.5 text-[12px] leading-normal text-ink-3">
@@ -236,7 +285,14 @@ function SongView({ song, opening }: { song: Song; opening: Opening }) {
               <div key={i}>
                 <div className="grid grid-cols-[1fr_32px] items-start gap-1.5 px-2">
                   <p className="font-jp lyric text-[19px] leading-[2.3]">
-                    <LyricLineView line={line} index={i} vocab={song.vocab} onWord={setOpenWord} furigana={furigana} />
+                    <LyricLineView
+                      line={line}
+                      index={i}
+                      vocab={song.vocab}
+                      onWord={setOpenWord}
+                      memory={(id) => memoryById.get(id) ?? "none"}
+                      furigana={furigana}
+                    />
                   </p>
                   <button
                     type="button"
